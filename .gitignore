@@ -1,0 +1,4 @@
+node_modules/
+dist/
+audit.json
+*.log

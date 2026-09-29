@@ -1,0 +1,100 @@
+{
+  "batchIndex": 2,
+  "nodes": [
+    {
+      "id": "config:config.json",
+      "type": "config",
+      "name": "config.json",
+      "filePath": "config.json",
+      "summary": "唯一运行时配置：监听地址与端口（默认 8600）、管理密码（明文或 sha256$ 哈希）、采集间隔、SSH 用户与端口、demo_mode 开关、以及 machines 机器列表（host + ip）。缺失时后端会回写一份默认值。",
+      "tags": ["runtime-config", "machines", "credentials", "demo-mode"],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:audit.json",
+      "type": "config",
+      "name": "audit.json",
+      "filePath": "audit.json",
+      "summary": "账号操作审计日志（运行时生成、被 .gitignore 排除）：每条含时间戳、动作（add/passwd/delete）、目标用户、机器列表、成败与失败原因，最新在前，最多保留 500 条。",
+      "tags": ["audit", "persistence", "runtime-data"],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:package.json",
+      "type": "config",
+      "name": "package.json",
+      "filePath": "package.json",
+      "summary": "项目清单：type=module；运行时依赖仅 vue，开发依赖仅 vite + @vitejs/plugin-vue；scripts 提供 dev（dev.mjs）、build（vite build）、preview、start（server/api.mjs）。",
+      "tags": ["manifest", "npm-scripts", "minimal-deps"],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:.gitignore",
+      "type": "config",
+      "name": ".gitignore",
+      "filePath": ".gitignore",
+      "summary": "版本控制忽略规则：node_modules/、dist/、audit.json、*.log——把构建产物与运行期数据排除在仓库外。",
+      "tags": ["vcs", "ignore-rules"],
+      "complexity": "simple"
+    },
+    {
+      "id": "service:gpu-ops-center.service",
+      "type": "service",
+      "name": "gpu-ops-center.service",
+      "filePath": "gpu-ops-center.service",
+      "summary": "systemd 单元：WorkingDirectory=/opt/gpu-ops-center，ExecStart 用 node 直接跑 server/api.mjs（无需 npm），Restart=always 且 RestartSec=5，依赖 network-online.target，用于中心节点开机自启。",
+      "tags": ["deploy", "systemd", "process-supervision"],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "项目文档：技术栈与目录说明、本地启动（dev 5173/API 8601，start 统一 8600）、部署到中心节点的完整步骤（SSH 免密 + sudo 白名单 + systemd）、三个页面的使用说明、故障域边界（中心宕机不影响 GPU 机器）、安全说明与常见问题。",
+      "tags": ["docs", "deployment", "operations", "faq"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:index.html",
+      "type": "file",
+      "name": "index.html",
+      "filePath": "index.html",
+      "summary": "Vite HTML 入口：#app 挂载点、module 方式引入 /src/main.js，并预连接 Google Fonts 加载 Space Grotesk 字体；生产模式下由后端 serveStatic 托管（SPA fallback）。",
+      "tags": ["entry", "html", "fonts"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:vite.config.js",
+      "type": "file",
+      "name": "vite.config.js",
+      "filePath": "vite.config.js",
+      "summary": "Vite 配置：@vitejs/plugin-vue 编译 SFC，root 为项目根，构建输出到 dist（emptyOutDir）；dev server 监听 5173 且 host=true，并把 /api 代理到 127.0.0.1:8601，解开前后端跨域。",
+      "tags": ["build", "dev-server", "proxy", "vue-sfc"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    { "source": "config:config.json", "target": "file:server/api.mjs", "type": "configures", "weight": 0.6, "label": "提供监听端口/采集间隔/SSH 参数/机器列表" },
+    { "source": "config:config.json", "target": "concept:demo-mode", "type": "configures", "weight": 0.6, "label": "demo_mode 开关" },
+    { "source": "config:audit.json", "target": "file:src/views/AuditView.vue", "type": "related", "weight": 0.5, "label": "审计数据的持久化落盘形式" },
+    { "source": "config:package.json", "target": "file:dev.mjs", "type": "configures", "weight": 0.6, "label": "npm run dev" },
+    { "source": "config:package.json", "target": "file:server/api.mjs", "type": "configures", "weight": 0.6, "label": "npm start" },
+    { "source": "config:package.json", "target": "file:vite.config.js", "type": "configures", "weight": 0.6, "label": "npm run build / preview" },
+    { "source": "config:package.json", "target": "file:src/App.vue", "type": "depends_on", "weight": 0.6, "label": "运行时依赖 vue" },
+    { "source": "config:.gitignore", "target": "config:audit.json", "type": "related", "weight": 0.5, "label": "运行期产物不入版本控制" },
+    { "source": "service:gpu-ops-center.service", "target": "file:server/api.mjs", "type": "deploys", "weight": 0.7 },
+    { "source": "service:gpu-ops-center.service", "target": "config:config.json", "type": "configures", "weight": 0.6, "label": "WorkingDirectory /opt/gpu-ops-center 下的配置" },
+    { "source": "document:README.md", "target": "file:server/api.mjs", "type": "documents", "weight": 0.5 },
+    { "source": "document:README.md", "target": "config:config.json", "type": "documents", "weight": 0.5 },
+    { "source": "document:README.md", "target": "service:gpu-ops-center.service", "type": "documents", "weight": 0.5 },
+    { "source": "document:README.md", "target": "file:dev.mjs", "type": "documents", "weight": 0.5 },
+    { "source": "document:README.md", "target": "concept:bypass-design", "type": "documents", "weight": 0.5, "label": "第五章故障域与旁路设计原则" },
+    { "source": "document:README.md", "target": "file:src/views/UsersView.vue", "type": "documents", "weight": 0.5 },
+    { "source": "document:README.md", "target": "file:src/views/DashboardView.vue", "type": "documents", "weight": 0.5 },
+    { "source": "file:index.html", "target": "file:src/main.js", "type": "imports", "weight": 0.7 },
+    { "source": "file:vite.config.js", "target": "file:index.html", "type": "configures", "weight": 0.6, "label": "构建入口与 HTML 模板" },
+    { "source": "file:vite.config.js", "target": "file:server/api.mjs", "type": "routes", "weight": 0.5, "label": "dev 代理 /api → 127.0.0.1:8601" },
+    { "source": "file:vite.config.js", "target": "file:src/App.vue", "type": "configures", "weight": 0.6, "label": "plugin-vue 编译 SFC" }
+  ]
+}

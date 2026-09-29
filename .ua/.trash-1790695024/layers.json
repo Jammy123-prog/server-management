@@ -1,0 +1,70 @@
+[
+  {
+    "id": "layer:frontend-shell",
+    "name": "前端应用外壳",
+    "description": "应用启动与全局骨架：HTML 入口、Vue 应用创建与根组件（认证门、导航、视图切换、Toast、状态轮询）。",
+    "nodeIds": ["file:index.html", "file:src/main.js", "file:src/App.vue"]
+  },
+  {
+    "id": "layer:views",
+    "name": "业务视图",
+    "description": "三个功能页面与登录页：集群总览、用户管理、操作审计、登录。均由 App.vue 条件渲染并通过 props 获取数据。",
+    "nodeIds": [
+      "file:src/views/DashboardView.vue",
+      "file:src/views/UsersView.vue",
+      "file:src/views/AuditView.vue",
+      "file:src/views/LoginView.vue"
+    ]
+  },
+  {
+    "id": "layer:components",
+    "name": "通用组件",
+    "description": "与业务无关的可复用展示组件：SVG 趋势曲线与资源占用条，被总览视图组合使用。",
+    "nodeIds": ["file:src/components/Sparkline.vue", "file:src/components/StatBar.vue"]
+  },
+  {
+    "id": "layer:frontend-shared",
+    "name": "前端共享层与设计系统",
+    "description": "跨视图共享的 HTTP 客户端与格式化工具，以及全局 CSS 设计系统（Ethereal Glass / Double-Bezel）。",
+    "nodeIds": ["file:src/api.js", "file:src/style.css"]
+  },
+  {
+    "id": "layer:backend-api",
+    "name": "后端 API 服务",
+    "description": "零 npm 依赖的 Node 服务与其暴露的全部 HTTP 接口：SSH 轮询采集、账号增删改密、会话认证、审计与静态托管。",
+    "nodeIds": [
+      "file:server/api.mjs",
+      "endpoint:server/api.mjs:login",
+      "endpoint:server/api.mjs:logout",
+      "endpoint:server/api.mjs:state",
+      "endpoint:server/api.mjs:users",
+      "endpoint:server/api.mjs:users-add",
+      "endpoint:server/api.mjs:users-passwd",
+      "endpoint:server/api.mjs:users-delete"
+    ]
+  },
+  {
+    "id": "layer:config-data",
+    "name": "配置与运行数据",
+    "description": "驱动行为的配置文件与运行期产物：机器清单/密码/采集间隔、审计日志、npm 清单与版本控制忽略规则。",
+    "nodeIds": ["config:config.json", "config:audit.json", "config:package.json", "config:.gitignore"]
+  },
+  {
+    "id": "layer:build-tooling",
+    "name": "构建与开发工具",
+    "description": "开发与构建期的旁路工具：Vite 配置与 /api 代理、一键并行启动脚本、基于 CDP 的 headless 截图脚本。",
+    "nodeIds": ["file:vite.config.js", "file:dev.mjs", "file:shot.mjs"]
+  },
+  {
+    "id": "layer:docs-deploy",
+    "name": "文档与部署",
+    "description": "面向运维的交付物：完整部署/使用/故障域文档，以及中心节点 systemd 开机自启单元。",
+    "nodeIds": ["document:README.md", "service:gpu-ops-center.service"]
+  },
+  {
+    "id": "layer:concepts",
+    "name": "架构概念",
+    "description": "贯穿代码的设计原则与运行机制：旁路设计、SSH 轮询采集、演示模式。",
+    "nodeIds": ["concept:bypass-design", "concept:ssh-polling", "concept:demo-mode"]
+  }
+]

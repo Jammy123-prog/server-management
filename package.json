@@ -1,0 +1,22 @@
+{
+  "name": "gpu-ops-center",
+  "version": "1.0.0",
+  "description": "轻量 GPU 集群管理台 — 账号管理 / 资源监控 / 占卡总览（旁路设计）",
+  "type": "module",
+  "scripts": {
+    "dev": "node dev.mjs",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server/api.mjs"
+  },
+  "dependencies": {
+    "vue": "^3.4.38"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.2",
+    "vite": "^5.4.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

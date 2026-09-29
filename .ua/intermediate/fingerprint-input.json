@@ -1,0 +1,27 @@
+{
+  "projectRoot": "f:/Trace-code/server",
+  "filePaths": [
+    ".gitignore",
+    "README.md",
+    "audit.json",
+    "config.json",
+    "dev.mjs",
+    "gpu-ops-center.service",
+    "index.html",
+    "package.json",
+    "server/api.mjs",
+    "shot.mjs",
+    "src/App.vue",
+    "src/api.js",
+    "src/components/Sparkline.vue",
+    "src/components/StatBar.vue",
+    "src/main.js",
+    "src/style.css",
+    "src/views/AuditView.vue",
+    "src/views/DashboardView.vue",
+    "src/views/LoginView.vue",
+    "src/views/UsersView.vue",
+    "vite.config.js"
+  ],
+  "gitCommitHash": ""
+}

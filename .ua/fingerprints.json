@@ -1,0 +1,636 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "",
+  "generatedAt": "2026-09-29T07:18:47.940Z",
+  "files": {
+    ".gitignore": {
+      "filePath": ".gitignore",
+      "contentHash": "006874e67fff465f1cc9cb0479010cc394c304625ef29b71bf5e11c63d481be3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 5,
+      "hasStructuralAnalysis": false
+    },
+    "README.md": {
+      "filePath": "README.md",
+      "contentHash": "cb7ea44f740f1b82d1f34f994e8fc7f11a008e102de240db19ddb4a9d0d94afb",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 204,
+      "hasStructuralAnalysis": false
+    },
+    "audit.json": {
+      "filePath": "audit.json",
+      "contentHash": "0b83f3ee524bf2c590077ecbcaa77d5f61dc7f35fcaea9a08404ae203b081f91",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 13,
+      "hasStructuralAnalysis": false
+    },
+    "config.json": {
+      "filePath": "config.json",
+      "contentHash": "3336ce14a3337879346cc8efffaa0e40b2c3cd44119bda06dfbad56b5298508c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 17,
+      "hasStructuralAnalysis": false
+    },
+    "dev.mjs": {
+      "filePath": "dev.mjs",
+      "contentHash": "45cd65fbaf50c24bdc4f918f06319c9fb5757c4f934a14499d2351f7275ae88c",
+      "functions": [
+        {
+          "name": "start",
+          "params": [
+            "name",
+            "cmd",
+            "args"
+          ],
+          "exported": false,
+          "lineCount": 14
+        },
+        {
+          "name": "shutdown",
+          "params": [],
+          "exported": false,
+          "lineCount": 8
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "node:child_process",
+          "specifiers": [
+            "spawn"
+          ]
+        },
+        {
+          "source": "node:url",
+          "specifiers": [
+            "fileURLToPath"
+          ]
+        },
+        {
+          "source": "node:path",
+          "specifiers": [
+            "dirname",
+            "join"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 50,
+      "hasStructuralAnalysis": true
+    },
+    "gpu-ops-center.service": {
+      "filePath": "gpu-ops-center.service",
+      "contentHash": "7d281c205c736b10923db0ea3b0afde1deb5ac9b227cbc06b78b3a3eed5ea138",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 17,
+      "hasStructuralAnalysis": false
+    },
+    "index.html": {
+      "filePath": "index.html",
+      "contentHash": "f1931f66601ac3e013f26b3e357d4820fefba41606fd80394cf5e6e53f47fb15",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
+      "hasStructuralAnalysis": false
+    },
+    "package.json": {
+      "filePath": "package.json",
+      "contentHash": "133e70788e2308aa6b1c597e1534b8f23b1be6aeac4ea6df8576a8aafb28a85a",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 23,
+      "hasStructuralAnalysis": false
+    },
+    "server/api.mjs": {
+      "filePath": "server/api.mjs",
+      "contentHash": "130f315ee01391fe1b14127d596dc27d3f02605b5103d3cc3efd8c5f0fd130f0",
+      "functions": [
+        {
+          "name": "loadConfig",
+          "params": [],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "shq",
+          "params": [
+            "s"
+          ],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "sshExec",
+          "params": [
+            "machine",
+            "script"
+          ],
+          "exported": false,
+          "lineCount": 26
+        },
+        {
+          "name": "parseIntSafe",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "parseFloatSafe",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "parsePoll",
+          "params": [
+            "out"
+          ],
+          "exported": false,
+          "lineCount": 72
+        },
+        {
+          "name": "auditAdd",
+          "params": [
+            "action",
+            "user",
+            "machines",
+            "ok"
+          ],
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "pollMachine",
+          "params": [
+            "host"
+          ],
+          "exported": false,
+          "lineCount": 22
+        },
+        {
+          "name": "collectUsers",
+          "params": [
+            "host"
+          ],
+          "exported": false,
+          "lineCount": 26
+        },
+        {
+          "name": "hashPassword",
+          "params": [
+            "password"
+          ],
+          "exported": false,
+          "lineCount": 14
+        },
+        {
+          "name": "addUser",
+          "params": [
+            "username",
+            "password",
+            "hosts",
+            "grantSudo"
+          ],
+          "exported": false,
+          "lineCount": 21
+        },
+        {
+          "name": "changePasswd",
+          "params": [
+            "username",
+            "password",
+            "hosts"
+          ],
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "deleteUser",
+          "params": [
+            "username",
+            "hosts"
+          ],
+          "exported": false,
+          "lineCount": 20
+        },
+        {
+          "name": "mulberry",
+          "params": [
+            "seed"
+          ],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "clamp",
+          "params": [
+            "v",
+            "lo",
+            "hi"
+          ],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "sha256",
+          "params": [
+            "s"
+          ],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "checkPassword",
+          "params": [
+            "given"
+          ],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "sessionOk",
+          "params": [
+            "req"
+          ],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "sendJson",
+          "params": [
+            "res",
+            "obj"
+          ],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "readBody",
+          "params": [
+            "req"
+          ],
+          "exported": false,
+          "lineCount": 16
+        },
+        {
+          "name": "serveStatic",
+          "params": [
+            "res",
+            "urlPath"
+          ],
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "handleApi",
+          "params": [
+            "req",
+            "res",
+            "url",
+            "body"
+          ],
+          "exported": false,
+          "lineCount": 110
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": false,
+          "lineCount": 28
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "node:http",
+          "specifiers": [
+            "http"
+          ]
+        },
+        {
+          "source": "node:fs",
+          "specifiers": [
+            "fs"
+          ]
+        },
+        {
+          "source": "node:path",
+          "specifiers": [
+            "path"
+          ]
+        },
+        {
+          "source": "node:crypto",
+          "specifiers": [
+            "crypto"
+          ]
+        },
+        {
+          "source": "node:child_process",
+          "specifiers": [
+            "spawn"
+          ]
+        },
+        {
+          "source": "node:url",
+          "specifiers": [
+            "fileURLToPath"
+          ]
+        },
+        {
+          "source": "node:path",
+          "specifiers": [
+            "dirname"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 682,
+      "hasStructuralAnalysis": true
+    },
+    "shot.mjs": {
+      "filePath": "shot.mjs",
+      "contentHash": "b45d0286b67782ab2a7a6c336438102146b08871f673f552156505d7c9c2cdc5",
+      "functions": [
+        {
+          "name": "sleep",
+          "params": [],
+          "exported": false,
+          "lineCount": 1
+        },
+        {
+          "name": "httpGetJson",
+          "params": [
+            "u"
+          ],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "main",
+          "params": [],
+          "exported": false,
+          "lineCount": 88
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "node:child_process",
+          "specifiers": [
+            "spawn"
+          ]
+        },
+        {
+          "source": "node:http",
+          "specifiers": [
+            "http"
+          ]
+        },
+        {
+          "source": "node:fs",
+          "specifiers": [
+            "fs"
+          ]
+        },
+        {
+          "source": "node:os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "node:path",
+          "specifiers": [
+            "path"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 118,
+      "hasStructuralAnalysis": true
+    },
+    "src/App.vue": {
+      "filePath": "src/App.vue",
+      "contentHash": "fc3de9a349a4e7c5de5d044fb7ee07f028c1e6fdefcbf3af623926559754c103",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 114,
+      "hasStructuralAnalysis": false
+    },
+    "src/api.js": {
+      "filePath": "src/api.js",
+      "contentHash": "39c32afe5c8c86679ea1d84890e68062339f65f36b40e158c11fad670c1a4e33",
+      "functions": [
+        {
+          "name": "api",
+          "params": [
+            "path",
+            "body"
+          ],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "esc",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "fmtB",
+          "params": [
+            "b"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "fmtMB",
+          "params": [],
+          "exported": true,
+          "lineCount": 1
+        },
+        {
+          "name": "ago",
+          "params": [
+            "ts"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "genPassword",
+          "params": [],
+          "exported": true,
+          "lineCount": 6
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [
+        "api",
+        "esc",
+        "fmtB",
+        "fmtMB",
+        "ago",
+        "genPassword"
+      ],
+      "totalLines": 45,
+      "hasStructuralAnalysis": true
+    },
+    "src/components/Sparkline.vue": {
+      "filePath": "src/components/Sparkline.vue",
+      "contentHash": "74cb8fe4fff4f8bd55f978d2be12fe51e71a41177bc2bb41a2b633fba8e0227e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 28,
+      "hasStructuralAnalysis": false
+    },
+    "src/components/StatBar.vue": {
+      "filePath": "src/components/StatBar.vue",
+      "contentHash": "83fff8edf061a48619ad3af94f229e7aa86d9cb0e64e8c90fd317a63260828b7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 23,
+      "hasStructuralAnalysis": false
+    },
+    "src/main.js": {
+      "filePath": "src/main.js",
+      "contentHash": "b8b6929b525d6327c72f945ca5dfbbc34655de55330873bea4028971777ceb9f",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "vue",
+          "specifiers": [
+            "createApp"
+          ]
+        },
+        {
+          "source": "./App.vue",
+          "specifiers": [
+            "App"
+          ]
+        },
+        {
+          "source": "./style.css",
+          "specifiers": []
+        }
+      ],
+      "exports": [],
+      "totalLines": 25,
+      "hasStructuralAnalysis": true
+    },
+    "src/style.css": {
+      "filePath": "src/style.css",
+      "contentHash": "d8da4ed31b480f4b03a3c33367871431f1cfff57c73b063887c85b76968890cb",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 320,
+      "hasStructuralAnalysis": false
+    },
+    "src/views/AuditView.vue": {
+      "filePath": "src/views/AuditView.vue",
+      "contentHash": "d57bbd8c2b876bccc4287c311066e9c64acba02be0234a46cefc6cef0e33b29e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 44,
+      "hasStructuralAnalysis": false
+    },
+    "src/views/DashboardView.vue": {
+      "filePath": "src/views/DashboardView.vue",
+      "contentHash": "5b2388e78a177bda049a31a61e0d2d6d56058a9eafc85e36b8455495053ce3de",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 185,
+      "hasStructuralAnalysis": false
+    },
+    "src/views/LoginView.vue": {
+      "filePath": "src/views/LoginView.vue",
+      "contentHash": "79057cb9a2afd49e020de414ea8e4783a11fded39357b2e86af8d61461288b29",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 53,
+      "hasStructuralAnalysis": false
+    },
+    "src/views/UsersView.vue": {
+      "filePath": "src/views/UsersView.vue",
+      "contentHash": "993445302f7967326e12baefe7a584635f987c1163ea7c03ccd5f0b0916a80d0",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 247,
+      "hasStructuralAnalysis": false
+    },
+    "vite.config.js": {
+      "filePath": "vite.config.js",
+      "contentHash": "f44d2ad1fc6bf49cd9129c39862555a9be21e2558d497d82bec1d4696bf87689",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "vite",
+          "specifiers": [
+            "defineConfig"
+          ]
+        },
+        {
+          "source": "@vitejs/plugin-vue",
+          "specifiers": [
+            "vue"
+          ]
+        },
+        {
+          "source": "node:url",
+          "specifiers": [
+            "fileURLToPath"
+          ]
+        },
+        {
+          "source": "node:path",
+          "specifiers": [
+            "dirname"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 26,
+      "hasStructuralAnalysis": true
+    }
+  }
+}

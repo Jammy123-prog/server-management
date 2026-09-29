@@ -1,0 +1,96 @@
+[
+  {
+    "order": 1,
+    "title": "项目定位与旁路设计",
+    "description": "先读 README 与 config.json：这是一个面向 3~20 台小型 GPU 集群的轻量管理台，核心原则是「旁路」——GPU 机器上零安装、零 agent，账号落在机器本地，中心节点宕机不影响机器登录与训练任务。",
+    "nodeIds": ["document:README.md", "config:config.json", "concept:bypass-design"]
+  },
+  {
+    "order": 2,
+    "title": "启动链路：一条命令到两个进程",
+    "description": "npm run dev 由 dev.mjs 并行拉起后端（API_PORT=8601）与 Vite（5173），Vite 把 /api 代理到后端；生产模式则由 server/api.mjs 单进程同时提供 API 与 dist 静态文件（8600）。入口 HTML 通过 module 脚本加载 src/main.js。",
+    "nodeIds": ["config:package.json", "file:dev.mjs", "file:vite.config.js", "file:index.html", "file:src/main.js"],
+    "languageLesson": "前后端分离但零跨域配置：dev 用 Vite proxy，prod 用同一 Node 进程托管静态文件，两条路径共用一套相对路径 /api/*，前端无需感知环境差异。"
+  },
+  {
+    "order": 3,
+    "title": "后端核心：SSH 轮询采集",
+    "description": "server/api.mjs 是整个后端。main() 按 config.json 的 poll_interval 定时对所有机器跑 pollMachine：sshExec 在远端执行一段分段输出脚本（@@GPU/@@PROC/@@PS/@@SYS/@@WHO），parsePoll 解析后写入内存状态与 240 点的 history 趋势缓冲。",
+    "nodeIds": [
+      "file:server/api.mjs",
+      "function:server/api.mjs:main",
+      "function:server/api.mjs:pollMachine",
+      "function:server/api.mjs:sshExec",
+      "function:server/api.mjs:parsePoll",
+      "concept:ssh-polling"
+    ],
+    "languageLesson": "零依赖的关键手法：不引 SSH 库，直接 spawn('ssh') 执行 shell 脚本，并用 @@SECTION 标记分段，让一次连接复用承担全部指标采集。"
+  },
+  {
+    "order": 4,
+    "title": "接口面：状态、账号与审计",
+    "description": "handleApi 是唯一路由入口：/api/login 放行并颁发 HttpOnly Cookie，其余接口先过 sessionOk；/api/state 是前端 5 秒轮询的唯一数据源，/api/users 与 add/passwd/delete 把账号操作逐台下发并在 auditAdd 中落审计。",
+    "nodeIds": [
+      "endpoint:server/api.mjs:state",
+      "endpoint:server/api.mjs:users",
+      "endpoint:server/api.mjs:users-add",
+      "endpoint:server/api.mjs:users-passwd",
+      "endpoint:server/api.mjs:users-delete",
+      "endpoint:server/api.mjs:login",
+      "function:server/api.mjs:handleApi",
+      "function:server/api.mjs:addUser",
+      "function:server/api.mjs:auditAdd"
+    ]
+  },
+  {
+    "order": 5,
+    "title": "账号操作如何落到机器本地",
+    "description": "addUser/changePasswd/deleteUser 的共同套路：shq 做单引号转义防注入 → hashPassword 调 openssl passwd -6 生成哈希 → sshExec 远端 sudo useradd/chpasswd -e/userdel → 逐台返回结果并失效 60 秒用户缓存。删除后还会用 id 复核，失败会提示「可能仍有该用户的进程在运行」。",
+    "nodeIds": [
+      "function:server/api.mjs:addUser",
+      "function:server/api.mjs:changePasswd",
+      "function:server/api.mjs:deleteUser",
+      "function:server/api.mjs:hashPassword",
+      "function:server/api.mjs:shq",
+      "function:server/api.mjs:collectUsers"
+    ],
+    "languageLesson": "密码永不以明文过网：中心节点本地算好 SHA-512 哈希，远端用 chpasswd -e 直接写入已加密口令。"
+  },
+  {
+    "order": 6,
+    "title": "前端外壳与认证门",
+    "description": "App.vue 启动时先打一次 /api/state 判断会话是否有效：有效则进主界面并起 5 秒轮询，无效渲染 LoginView。src/api.js 的 api() 在收到 401 时派发 gpuc:unauthorized 事件，App.vue 监听后强制退回登录态——跨组件的会话失效处理。",
+    "nodeIds": ["file:src/App.vue", "file:src/views/LoginView.vue", "file:src/api.js", "function:src/App.vue:poll", "function:src/App.vue:onUnauthorized"],
+    "languageLesson": "没有 Router 也没有 Pinia：视图切换靠一个 currentView ref，全局状态只有一份轮询得到的 state，用 window 自定义事件解耦 401 处理。"
+  },
+  {
+    "order": 7,
+    "title": "总览视图与可视化组件",
+    "description": "DashboardView 消费 state：四张统计卡 → 每台机器卡片（GPU 利用率/显存/温度/功耗、CPU/内存/磁盘三条、Sparkline 趋势）→ 展开看占卡进程与登录用户 → 底部全集群占卡进程表。样式统一来自 style.css 的设计系统。",
+    "nodeIds": [
+      "file:src/views/DashboardView.vue",
+      "file:src/components/Sparkline.vue",
+      "file:src/components/StatBar.vue",
+      "file:src/style.css",
+      "function:src/components/Sparkline.vue:build"
+    ]
+  },
+  {
+    "order": 8,
+    "title": "用户管理视图与机器×用户矩阵",
+    "description": "UsersView 用表单批量建号（用户名正则、生成 12 位密码、可选 sudo、勾选机器/全选），下方按机器分组列出本地账号构成矩阵，每行可改密或删除，两个模态框确认后调用对应接口并 Toast 汇总逐台成败。",
+    "nodeIds": ["file:src/views/UsersView.vue", "function:src/views/UsersView.vue:createUser", "function:src/views/UsersView.vue:loadUsers", "function:src/api.js:genPassword"]
+  },
+  {
+    "order": 9,
+    "title": "审计、部署与演示模式",
+    "description": "AuditView 渲染 audit.json 的时间线；gpu-ops-center.service 让 systemd 直接跑 api.mjs 实现开机自启；config.json 的 demo_mode=true 时用 mulberry32 生成可复现的模拟数据，不连任何机器即可预览全部界面。",
+    "nodeIds": [
+      "file:src/views/AuditView.vue",
+      "config:audit.json",
+      "service:gpu-ops-center.service",
+      "concept:demo-mode",
+      "function:server/api.mjs:demo.tick"
+    ]
+  }
+]

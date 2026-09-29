@@ -1,0 +1,205 @@
+{
+  "scriptCompleted": true,
+  "contentDigest": "3317c923847d760face374ac4afc25e3d5ddc09e8a62cfed5a6cb7ead36d53a2",
+  "files": [
+    {
+      "path": ".gitignore",
+      "language": "unknown",
+      "sizeLines": 4,
+      "fileCategory": "code"
+    },
+    {
+      "path": "README.md",
+      "language": "markdown",
+      "sizeLines": 203,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "audit.json",
+      "language": "json",
+      "sizeLines": 12,
+      "fileCategory": "config"
+    },
+    {
+      "path": "config.json",
+      "language": "json",
+      "sizeLines": 16,
+      "fileCategory": "config"
+    },
+    {
+      "path": "dev.mjs",
+      "language": "javascript",
+      "sizeLines": 49,
+      "fileCategory": "code"
+    },
+    {
+      "path": "gpu-ops-center.service",
+      "language": "service",
+      "sizeLines": 16,
+      "fileCategory": "code"
+    },
+    {
+      "path": "index.html",
+      "language": "html",
+      "sizeLines": 15,
+      "fileCategory": "markup"
+    },
+    {
+      "path": "package.json",
+      "language": "json",
+      "sizeLines": 22,
+      "fileCategory": "config"
+    },
+    {
+      "path": "server/api.mjs",
+      "language": "javascript",
+      "sizeLines": 681,
+      "fileCategory": "code"
+    },
+    {
+      "path": "shot.mjs",
+      "language": "javascript",
+      "sizeLines": 117,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/App.vue",
+      "language": "vue",
+      "sizeLines": 113,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/api.js",
+      "language": "javascript",
+      "sizeLines": 44,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/components/Sparkline.vue",
+      "language": "vue",
+      "sizeLines": 27,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/components/StatBar.vue",
+      "language": "vue",
+      "sizeLines": 22,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/main.js",
+      "language": "javascript",
+      "sizeLines": 24,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/style.css",
+      "language": "css",
+      "sizeLines": 319,
+      "fileCategory": "markup"
+    },
+    {
+      "path": "src/views/AuditView.vue",
+      "language": "vue",
+      "sizeLines": 43,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/views/DashboardView.vue",
+      "language": "vue",
+      "sizeLines": 184,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/views/LoginView.vue",
+      "language": "vue",
+      "sizeLines": 52,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/views/UsersView.vue",
+      "language": "vue",
+      "sizeLines": 246,
+      "fileCategory": "code"
+    },
+    {
+      "path": "vite.config.js",
+      "language": "javascript",
+      "sizeLines": 25,
+      "fileCategory": "code"
+    }
+  ],
+  "totalFiles": 21,
+  "filteredByIgnore": 13,
+  "estimatedComplexity": "small",
+  "failures": [],
+  "stats": {
+    "filesScanned": 21,
+    "byCategory": {
+      "code": 15,
+      "docs": 1,
+      "config": 3,
+      "markup": 2
+    },
+    "byLanguage": {
+      "unknown": 1,
+      "markdown": 1,
+      "json": 3,
+      "javascript": 6,
+      "service": 1,
+      "html": 1,
+      "vue": 7,
+      "css": 1
+    }
+  },
+  "projectName": "gpu-ops-center",
+  "description": "轻量 GPU 集群管理台：账号管理 / 资源监控 / 占卡总览。Vue 3 + Vite 前端，零 npm 依赖的 Node 后端，通过 SSH 旁路采集，GPU 机器零安装零 agent。",
+  "languages": [
+    "javascript",
+    "vue",
+    "css",
+    "html",
+    "json",
+    "markdown"
+  ],
+  "frameworks": [
+    "vue",
+    "vite"
+  ],
+  "entryPoint": "src/main.js",
+  "readmeHead": "# GPU Ops Center · GPU 集群管理台\n\n轻量 Web 工具，专为小型 GPU 集群（3~20 台）设计。Vue 3 + Vite 前端 / 零依赖 Node 后端，一条命令启动。",
+  "importMap": {
+    "src/main.js": [
+      "src/App.vue",
+      "src/style.css"
+    ],
+    "src/App.vue": [
+      "src/api.js",
+      "src/views/LoginView.vue",
+      "src/views/DashboardView.vue",
+      "src/views/UsersView.vue",
+      "src/views/AuditView.vue"
+    ],
+    "src/api.js": [],
+    "src/components/Sparkline.vue": [],
+    "src/components/StatBar.vue": [],
+    "src/views/AuditView.vue": [
+      "src/api.js"
+    ],
+    "src/views/DashboardView.vue": [
+      "src/components/Sparkline.vue",
+      "src/components/StatBar.vue",
+      "src/api.js"
+    ],
+    "src/views/LoginView.vue": [
+      "src/api.js"
+    ],
+    "src/views/UsersView.vue": [
+      "src/api.js"
+    ],
+    "server/api.mjs": [],
+    "dev.mjs": [],
+    "shot.mjs": [],
+    "vite.config.js": []
+  }
+}

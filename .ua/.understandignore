@@ -1,0 +1,16 @@
+# Understand-Anything 分析排除规则
+#
+# 语法同 .gitignore，一行一条；`!` 前缀表示强制重新纳入。
+# 这些规则叠加在内置默认排除（node_modules/、.git/、锁文件等）之上。
+
+# 分析产物自身（.ua/ 数据目录）
+.ua/
+
+# 构建产物
+dist/
+
+# 二进制截图产物
+*.png
+
+# 版本控制与运行期噪声（默认已排除，这里显式保留 .gitignore 便于在图谱中展示）
+!.gitignore
