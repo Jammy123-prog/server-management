@@ -14,9 +14,10 @@
  */
 import http from 'node:http'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import crypto from 'node:crypto'
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
 
@@ -104,6 +105,79 @@ function sshExec(machine, script, timeoutMs = 20000) {
       else reject(new Error((err || out || `ssh exit ${code}`).slice(0, 300)))
     })
   })
+}
+
+/**
+ * 用密码执行一次 SSH（一次性引导用，密码不落盘）。
+ * 通过 SSH_ASKPASS_REQUIRE=force 让 ssh 无终端时也走 askpass 读密码（需 OpenSSH >= 8.4）。
+ */
+function sshExecWithPassword(machine, password, script, timeoutMs = 40000) {
+  return new Promise((resolve, reject) => {
+    const askpassPath = path.join(os.tmpdir(), `gpuc-askpass-${process.pid}-${Date.now()}`)
+    fs.writeFileSync(askpassPath, `#!/bin/sh\ncat <<'__GPUC_PW_EOF__'\n${password}\n__GPUC_PW_EOF__\n`, { mode: 0o700 })
+    const cleanup = () => { try { fs.unlinkSync(askpassPath) } catch {} }
+    const args = [
+      '-o', 'StrictHostKeyChecking=accept-new',
+      '-o', 'ConnectTimeout=8',
+      '-o', 'NumberOfPasswordPrompts=1',
+      '-p', String(CFG.ssh_port || 22),
+      `${machine.user}@${machine.ip}`,
+      script
+    ]
+    const p = spawn('ssh', args, {
+      env: { ...process.env, SSH_ASKPASS: askpassPath, SUDO_ASKPASS: askpassPath, SSH_ASKPASS_REQUIRE: 'force', DISPLAY: 'gpuc-dummy' },
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    let out = '', err = ''
+    const timer = setTimeout(() => {
+      try { p.kill() } catch {}
+      cleanup()
+      reject(new Error('SSH 执行超时'))
+    }, timeoutMs)
+    p.stdout.on('data', d => { out += d })
+    p.stderr.on('data', d => { err += d })
+    p.on('error', e => { clearTimeout(timer); cleanup(); reject(e) })
+    p.on('close', code => {
+      clearTimeout(timer)
+      cleanup()
+      if (code === 0) resolve(out)
+      else reject(new Error((err || out || `ssh exit ${code}`).replace(/\n/g, ' ').slice(0, 300)))
+    })
+  })
+}
+
+/** 中心节点公钥：不存在则自动生成 ed25519 密钥对 */
+function ensurePubKey() {
+  const sshDir = path.join(os.homedir(), '.ssh')
+  const pubPath = path.join(sshDir, 'id_ed25519.pub')
+  try { return fs.readFileSync(pubPath, 'utf-8').trim() } catch {}
+  fs.mkdirSync(sshDir, { recursive: true })
+  const r = spawnSync('ssh-keygen', ['-t', 'ed25519', '-f', path.join(sshDir, 'id_ed25519'), '-N', '', '-q'])
+  if (r.status !== 0) throw new Error('ssh-keygen 生成失败: ' + String(r.stderr).slice(0, 200))
+  return fs.readFileSync(pubPath, 'utf-8').trim()
+}
+
+/**
+ * 远程引导脚本：在目标机器上创建 gpuops 账号 + 安装公钥 + 受限 sudo。
+ * 以传入账号执行；非 root 时先用密码完成 sudo -v，再走 sudo。
+ */
+function buildBootstrapScript(pubKey, password) {
+  return `
+S=""
+if [ "$(id -u)" != "0" ]; then
+  printf '%s\\n' ${shq(password)} | sudo -S -v 2>/dev/null || { echo '@@ERR:no_sudo'; exit 0; }
+  S="sudo "
+fi
+id gpuops >/dev/null 2>&1 || $S useradd -m -s /bin/bash gpuops || { echo '@@ERR:useradd'; exit 0; }
+$S mkdir -p /home/gpuops/.ssh
+$S chmod 700 /home/gpuops/.ssh
+printf '%s\\n' ${shq(pubKey)} | $S tee /home/gpuops/.ssh/authorized_keys >/dev/null
+$S chmod 600 /home/gpuops/.ssh/authorized_keys
+$S chown -R gpuops:gpuops /home/gpuops/.ssh
+printf '%s\\n' 'gpuops ALL=(root) NOPASSWD: /usr/sbin/useradd, /usr/sbin/userdel, /usr/sbin/usermod, /usr/sbin/chpasswd' | $S tee /etc/sudoers.d/gpuops >/dev/null
+$S chmod 440 /etc/sudoers.d/gpuops
+echo '@@OK'
+`
 }
 
 const POLL_SCRIPT = `
@@ -627,6 +701,44 @@ async function handleApi(req, res, url, body) {
       return sendJson(res, { ok: true })
     } catch (e) {
       return sendJson(res, { ok: false, error: String(e.message || e).slice(0, 200) })
+    }
+  }
+
+  // ---- 密码引导：用一次密码登录目标机器，自动装好免密通道（gpuops + 公钥 + 受限 sudo） ----
+
+  if (req.method === 'POST' && pathname === '/api/machines/bootstrap') {
+    const host = String(body.host || '').trim()
+    const username = String(body.username || '').trim()
+    const password = String(body.password || '')
+    const m = state.machines.get(host)
+    if (!m) return sendJson(res, { error: '机器不存在' }, 400)
+    if (!USERNAME_RE.test(username)) return sendJson(res, { error: '登录用户名不合法' }, 400)
+    if (!password) return sendJson(res, { error: '请输入登录密码' }, 400)
+
+    if (CFG.demo_mode) {
+      auditAdd('bootstrap', username, [host], true, 'demo 模式')
+      return sendJson(res, { ok: true })
+    }
+
+    try {
+      const pub = ensurePubKey()
+      const out = await sshExecWithPassword({ ip: m.ip, user: username }, password, buildBootstrapScript(pub, password))
+      if (!out.includes('@@OK')) {
+        const why = out.includes('no_sudo')
+          ? `账号「${username}」没有 root/sudo 权限，无法完成引导`
+          : out.includes('useradd')
+            ? '创建 gpuops 账号失败（useradd）'
+            : '引导脚本未成功执行'
+        throw new Error(why)
+      }
+      state.usersCache.delete(host)
+      pollMachine(host).catch(() => {})   // 引导成功，立即重新采集
+      auditAdd('bootstrap', username, [host], true)
+      return sendJson(res, { ok: true })
+    } catch (e) {
+      const msg = String(e.message || e)
+      auditAdd('bootstrap', username, [host], false, msg.slice(0, 200))
+      return sendJson(res, { error: msg.includes('Permission denied') ? '密码错误或该账号不允许密码登录' : msg }, 400)
     }
   }
 

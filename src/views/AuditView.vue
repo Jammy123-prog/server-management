@@ -7,7 +7,7 @@ const props = defineProps({
   audit: { type: Array, default: () => [] }
 })
 
-const OP_LABEL = { add: '创建', delete: '删除', passwd: '改密', machine_add: '接入机器', machine_remove: '移除机器' }
+const OP_LABEL = { add: '创建', delete: '删除', passwd: '改密', machine_add: '接入机器', machine_remove: '移除机器', bootstrap: '密码引导' }
 
 function fmtTs(ts) {
   return new Date(ts * 1000).toLocaleString('zh-CN')

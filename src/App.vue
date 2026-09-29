@@ -102,7 +102,7 @@ onUnmounted(() => {
     </nav>
 
     <KeepAlive>
-      <DashboardView v-if="currentView === 'dash'" :state="state" :on-refresh="poll" />
+      <DashboardView v-if="currentView === 'dash'" :state="state" :on-refresh="poll" :toast="showToast" />
       <MachinesView v-else-if="currentView === 'machines' && state" :machines="state.machines" :toast="showToast" :on-refresh="poll" />
       <UsersView v-else-if="currentView === 'users' && state" :machines="state.machines" :toast="showToast" />
       <AuditView v-else-if="currentView === 'audit' && state" :audit="state.audit" />

@@ -2,6 +2,7 @@
 /** 机器管理：网页增删受管机器（自动写入 config.json，立即生效，无需重启） */
 import { computed, reactive, ref } from 'vue'
 import { api, ago } from '../api.js'
+import BootstrapModal from '../components/BootstrapModal.vue'
 
 const props = defineProps({
   machines: { type: Array, required: true },
@@ -57,6 +58,10 @@ async function addMachine() {
     adding.value = false
   }
 }
+
+// ---- 移除 ----
+// ---- 密码引导 ----
+const bootTarget = ref(null)
 
 // ---- 移除 ----
 const delModal = reactive({ show: false, host: '', ip: '', busy: false })
@@ -152,7 +157,8 @@ async function doRemove() {
               <span style="color:var(--danger)">{{ m.error || '尚未采集' }}</span>
             </template>
           </div>
-          <div style="margin-top:auto;display:flex;justify-content:flex-end">
+          <div style="margin-top:auto;display:flex;justify-content:flex-end;gap:6px">
+            <button v-if="!m.online" class="iact" @click="bootTarget = { host: m.host, ip: m.ip }">密码引导</button>
             <button class="iact del" @click="confirmRemove(m)">移除</button>
           </div>
         </div>
@@ -173,5 +179,7 @@ async function doRemove() {
         </div>
       </div></div>
     </div>
+    <!-- SSH 密码引导 -->
+    <BootstrapModal :target="bootTarget" :toast="toast" @close="bootTarget = null" @done="onRefresh()" />
   </section>
 </template>

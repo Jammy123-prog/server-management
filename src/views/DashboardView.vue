@@ -3,14 +3,17 @@
 import { computed, reactive, ref } from 'vue'
 import Sparkline from '../components/Sparkline.vue'
 import StatBar from '../components/StatBar.vue'
+import BootstrapModal from '../components/BootstrapModal.vue'
 import { fmtB, fmtMB, ago } from '../api.js'
 
 const props = defineProps({
   state: { type: Object, required: true },
-  onRefresh: { type: Function, required: true }
+  onRefresh: { type: Function, required: true },
+  toast: { type: Function, required: true }
 })
 
 const expanded = reactive({})
+const bootTarget = ref(null)   // { host, ip } → 打开密码引导弹窗
 
 const machines = computed(() => props.state?.machines || [])
 
@@ -144,6 +147,9 @@ function whoUnique(m) {
               采集失败：{{ m.error || '未知错误' }}
               <div style="color:var(--faint);margin-top:4px">机器本身不受影响，仅中心节点无法读取指标</div>
             </div>
+            <div v-if="/Permission denied/i.test(m.error || '')" style="margin-top:2px">
+              <button class="iact" @click="bootTarget = { host: m.host, ip: m.ip }">密码引导接入</button>
+            </div>
           </template>
         </div>
       </div>
@@ -180,5 +186,8 @@ function whoUnique(m) {
         </div>
       </div>
     </div>
+
+    <!-- SSH 密码引导 -->
+    <BootstrapModal :target="bootTarget" :toast="toast" @close="bootTarget = null" @done="onRefresh()" />
   </section>
 </template>
