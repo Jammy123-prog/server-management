@@ -6,6 +6,7 @@ import LoginView from './views/LoginView.vue'
 import DashboardView from './views/DashboardView.vue'
 import MachinesView from './views/MachinesView.vue'
 import UsersView from './views/UsersView.vue'
+import AdminsView from './views/AdminsView.vue'
 import AuditView from './views/AuditView.vue'
 
 const authed = ref(null)          // null=检查中, false, true
@@ -18,6 +19,7 @@ const NAV = [
   { id: 'dash', label: '总览' },
   { id: 'machines', label: '机器管理' },
   { id: 'users', label: '用户管理' },
+  { id: 'admins', label: '管理员' },
   { id: 'audit', label: '操作审计' }
 ]
 
@@ -98,13 +100,14 @@ onUnmounted(() => {
           @click="switchView(n.id)"
         >{{ n.label }}</button>
       </div>
-      <button class="logout" @click="logout">退出</button>
+      <button class="logout" :title="'当前登录：' + (state?.me || '')" @click="logout"><span v-if="state?.me" style="margin-right:6px">{{ state.me }}</span>退出</button>
     </nav>
 
     <KeepAlive>
       <DashboardView v-if="currentView === 'dash'" :state="state" :on-refresh="poll" :toast="showToast" />
       <MachinesView v-else-if="currentView === 'machines' && state" :machines="state.machines" :toast="showToast" :on-refresh="poll" />
       <UsersView v-else-if="currentView === 'users' && state" :machines="state.machines" :toast="showToast" />
+      <AdminsView v-else-if="currentView === 'admins' && state" :me="state.me" :toast="showToast" />
       <AuditView v-else-if="currentView === 'audit' && state" :audit="state.audit" />
     </KeepAlive>
   </div>

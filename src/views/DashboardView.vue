@@ -14,8 +14,19 @@ const props = defineProps({
 
 const expanded = reactive({})
 const bootTarget = ref(null)   // { host, ip } → 打开密码引导弹窗
+const search = ref('')
 
 const machines = computed(() => props.state?.machines || [])
+
+// 搜索过滤：按机器名或 IP（子串匹配，不区分大小写）
+const machinesShown = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return machines.value
+  return machines.value.filter(m =>
+    m.host.toLowerCase().includes(q) || String(m.ip || '').toLowerCase().includes(q)
+  )
+})
+const scrollable = computed(() => machinesShown.value.length > 8)
 
 const online = computed(() => machines.value.filter(m => m.online))
 const gpus = computed(() => online.value.flatMap(m => m.gpus || []))
@@ -79,8 +90,19 @@ function whoUnique(m) {
 
     <div style="height:18px"></div>
 
-    <div class="bento">
-      <div v-for="m in machines" :key="m.host" class="bezel b-6 rise">
+    <!-- 机器搜索 -->
+    <div class="msearch-row">
+      <div class="msearch bezel"><div class="core">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style="flex:none;color:var(--faint)"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.4"/><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <input v-model="search" class="msearch-inp" placeholder="搜索机器：名称或 IP，如 gpu-03 / 192.168.1.13">
+        <button v-if="search" class="iact" style="flex:none" @click="search = ''">清除</button>
+      </div></div>
+      <span class="chip">{{ machinesShown.length }} / {{ machines.length }} 台{{ scrollable ? ' · 下滑查看更多' : '' }}</span>
+    </div>
+    <div style="height:18px"></div>
+
+    <div class="bento" :class="{ 'bento-scroll': scrollable }">
+      <div v-for="m in machinesShown" :key="m.host" class="bezel b-6 rise">
         <div class="core mcard">
           <div class="mhead">
             <span class="dot" :class="m.online ? 'on' : 'off'"></span>

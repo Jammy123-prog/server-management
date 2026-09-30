@@ -7,7 +7,7 @@ const props = defineProps({
   audit: { type: Array, default: () => [] }
 })
 
-const OP_LABEL = { add: '创建', delete: '删除', passwd: '改密', machine_add: '接入机器', machine_remove: '移除机器', bootstrap: '密码引导' }
+const OP_LABEL = { add: '创建', delete: '删除', passwd: '改密', machine_add: '接入机器', machine_remove: '移除机器', bootstrap: '密码引导', admin_add: '新增管理员', admin_delete: '删除管理员' }
 
 function fmtTs(ts) {
   return new Date(ts * 1000).toLocaleString('zh-CN')
@@ -32,7 +32,8 @@ function fmtTs(ts) {
             <div class="what">
               <span class="op">{{ OP_LABEL[a.action] || a.action }}</span>
               <b>{{ a.user }}</b>
-              <span style="color:var(--muted)"> · {{ a.machines.join('、') }}</span>
+              <span style="color:var(--muted)"> · {{ a.machines.join('、') || '无' }}</span>
+              <span v-if="a.actor" class="chip" style="margin-left:6px;padding:2px 9px;font-size:10px">by {{ a.actor }}</span>
             </div>
             <div v-if="a.why" class="why">{{ a.why }}</div>
           </div>

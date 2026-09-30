@@ -317,3 +317,16 @@ button{font-family:var(--font)}
 .hidden{display:none!important}
 .loading{color:var(--faint);text-align:center;padding:60px 0;font-size:13px}
 .fnote{font-size:11.5px;color:var(--faint);line-height:1.7;border-top:1px solid var(--line);padding-top:14px;margin-top:4px}
+
+/* dashboard machine search */
+.msearch-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.msearch{flex:1;min-width:260px;max-width:560px;padding:4px}
+.msearch .core{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:16px}
+.msearch-inp{
+  flex:1;font-family:var(--font);font-size:13.5px;color:var(--text);
+  background:none;border:0;outline:none;min-width:0;
+}
+.msearch-inp::placeholder{color:var(--faint)}
+
+/* machine grid scroll (machines > 8 / rows > 4) */
+.bento-scroll{max-height:76vh;overflow-y:auto;padding-right:8px}

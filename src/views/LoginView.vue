@@ -4,6 +4,7 @@ import { api } from '../api.js'
 
 const emit = defineEmits(['success'])
 
+const username = ref('admin')
 const password = ref('')
 const err = ref('')
 const loading = ref(false)
@@ -12,7 +13,7 @@ async function doLogin() {
   err.value = ''
   loading.value = true
   try {
-    await api('/api/login', { password: password.value })
+    await api('/api/login', { username: username.value.trim(), password: password.value })
     emit('success')
   } catch (e) {
     err.value = e.message
@@ -28,9 +29,17 @@ async function doLogin() {
       <div class="core">
         <span class="eyebrow"><i></i>GPU OPS CENTER</span>
         <h1>集群管理台</h1>
-        <div class="sub">5 台 RTX 4080 · 统一账户 / 资源 / 占卡总览</div>
+        <div class="sub">GPU 集群 · 统一账户 / 资源 / 占卡总览</div>
         <div class="field" style="margin-bottom:14px">
-          <label>管理密码</label>
+          <label>用户名</label>
+          <input
+            v-model="username"
+            class="inp" placeholder="管理员账号" autocomplete="username"
+            @keydown.enter="doLogin"
+          >
+        </div>
+        <div class="field" style="margin-bottom:14px">
+          <label>密码</label>
           <input
             id="login-pw"
             v-model="password"

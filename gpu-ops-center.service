@@ -5,6 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+# 运行用户：须与执行过 SSH 密钥引导（ssh-copy-id / 网页密码引导）的用户一致，
+# 否则轮询用的密钥和已安装的公钥不匹配。改成你的实际用户名。
+User=zpmc
 # 按实际部署路径与 Node 位置修改
 WorkingDirectory=/opt/gpu-ops-center
 ExecStart=/usr/bin/node /opt/gpu-ops-center/server/api.mjs

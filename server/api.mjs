@@ -25,6 +25,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = path.dirname(__dirname)
 const CONFIG_PATH = path.join(ROOT, 'config.json')
 const AUDIT_PATH = path.join(ROOT, 'audit.json')
+const ADMINS_PATH = path.join(ROOT, 'admins.json')
 const DIST_DIR = path.join(ROOT, 'dist')
 
 // ---------------------------------------------------------------- config
@@ -305,7 +306,7 @@ try { state.audit = JSON.parse(fs.readFileSync(AUDIT_PATH, 'utf-8')) } catch {}
 
 function auditAdd(action, user, machines, ok, detail = '') {
   state.audit.unshift({
-    ts: Math.floor(Date.now() / 1000), action, user,
+    ts: Math.floor(Date.now() / 1000), action, user, actor: currentActor,
     machines, ok, detail: detail.slice(0, 300)
   })
   state.audit = state.audit.slice(0, 500)
@@ -542,23 +543,52 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
 // ---------------------------------------------------------------- auth
 
-const sessions = new Map()   // token -> expiry(ms)
+const sessions = new Map()   // token -> { exp, name }
 let failCount = 0, failUntil = 0
+let currentActor = 'system'  // 当前请求的管理员（记入审计）
 
 function sha256(s) { return crypto.createHash('sha256').update(s).digest('hex') }
 
-function checkPassword(given) {
-  const stored = CFG.admin_password || ''
-  if (stored.startsWith('sha256$')) return sha256(given) === stored.slice(7)
-  return given === stored
+// ---- 管理员账号存储（admins.json：[{name, salt, hash, created, last_login}]） ----
+
+let admins = []
+try { admins = JSON.parse(fs.readFileSync(ADMINS_PATH, 'utf-8')) } catch {}
+if (!Array.isArray(admins)) admins = []
+
+function saveAdmins() {
+  try { fs.writeFileSync(ADMINS_PATH, JSON.stringify(admins, null, 1)) } catch (e) {
+    console.error('[admins] 写入失败:', e.message)
+  }
+}
+
+// 首次启动：用 config.admin_password 生成默认管理员 admin（保留旧单密码的兼容）
+if (!admins.length) {
+  admins.push({
+    name: 'admin',
+    salt: crypto.randomBytes(8).toString('hex'),
+    hash: '', created: Math.floor(Date.now() / 1000), last_login: 0
+  })
+  admins[0].hash = sha256(admins[0].salt + (CFG.admin_password || 'changeme'))
+  saveAdmins()
+  console.log('[admins] 已根据 config.json 的 admin_password 创建默认管理员「admin」，登录后可在"管理员"页修改账号')
+}
+
+function hashAdminPw(salt, password) { return sha256(salt + password) }
+
+function verifyAdmin(name, given) {
+  const a = admins.find(x => x.name === name)
+  if (!a) return null
+  return hashAdminPw(a.salt, given) === a.hash ? a : null
 }
 
 function sessionOk(req) {
   const cookie = req.headers.cookie || ''
   const m = /(?:^|;\s*)sid=([a-f0-9]+)/.exec(cookie)
   if (!m) return false
-  const exp = sessions.get(m[1]) || 0
-  return exp > Date.now()
+  const s = sessions.get(m[1])
+  if (!s || s.exp <= Date.now()) return false
+  currentActor = s.name
+  return true
 }
 
 // ---------------------------------------------------------------- http
@@ -630,18 +660,22 @@ async function handleApi(req, res, url, body) {
   if (req.method === 'POST' && pathname === '/api/login') {
     const now = Date.now()
     if (now < failUntil) return sendJson(res, { error: '尝试过多，请稍后再试' }, 429)
-    if (checkPassword(String(body.password || ''))) {
+    const username = String(body.username || '').trim()
+    const account = verifyAdmin(username, String(body.password || ''))
+    if (account) {
       failCount = 0
       const token = crypto.randomBytes(24).toString('hex')
       sessions.clear()
-      sessions.set(token, now + 12 * 3600 * 1000)
-      return sendJson(res, {}, 200, {
+      sessions.set(token, { exp: now + 12 * 3600 * 1000, name: account.name })
+      account.last_login = Math.floor(now / 1000)
+      saveAdmins()
+      return sendJson(res, { ok: true, name: account.name }, 200, {
         'Set-Cookie': `sid=${token}; HttpOnly; Path=/; SameSite=Strict`
       })
     }
     failCount++
     if (failCount >= 5) { failUntil = now + 300 * 1000; failCount = 0 }
-    return sendJson(res, { error: '密码错误' }, 401)
+    return sendJson(res, { error: '用户名或密码错误' }, 401)
   }
 
   if (!sessionOk(req)) return sendJson(res, { error: 'unauthorized' }, 401)
@@ -649,6 +683,41 @@ async function handleApi(req, res, url, body) {
   if (req.method === 'POST' && pathname === '/api/logout') {
     const m = /(?:^|;\s*)sid=([a-f0-9]+)/.exec(req.headers.cookie || '')
     if (m) sessions.delete(m[1])
+    return sendJson(res, { ok: true })
+  }
+
+  // ---- 管理员管理 ----
+
+  if (req.method === 'GET' && pathname === '/api/admins') {
+    return sendJson(res, {
+      admins: admins.map(a => ({ name: a.name, created: a.created, last_login: a.last_login }))
+    })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/admins/add') {
+    const name = String(body.username || '').trim()
+    const password = String(body.password || '')
+    if (!USERNAME_RE.test(name)) return sendJson(res, { error: '用户名不合法（字母开头，可含数字和 _ -）' }, 400)
+    if (password.length < 6) return sendJson(res, { error: '密码至少 6 位' }, 400)
+    if (admins.some(a => a.name === name)) return sendJson(res, { error: `管理员「${name}」已存在` }, 400)
+    admins.push({
+      name, salt: crypto.randomBytes(8).toString('hex'),
+      hash: '', created: Math.floor(Date.now() / 1000), last_login: 0
+    })
+    admins[admins.length - 1].hash = hashAdminPw(admins[admins.length - 1].salt, password)
+    saveAdmins()
+    auditAdd('admin_add', name, [], true)
+    return sendJson(res, { ok: true })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/admins/delete') {
+    const name = String(body.username || '').trim()
+    if (!admins.some(a => a.name === name)) return sendJson(res, { error: '管理员不存在' }, 400)
+    if (name === currentActor) return sendJson(res, { error: '不能删除当前登录的自己' }, 400)
+    if (admins.length <= 1) return sendJson(res, { error: '至少保留一名管理员' }, 400)
+    admins = admins.filter(a => a.name !== name)
+    saveAdmins()
+    auditAdd('admin_delete', name, [], true)
     return sendJson(res, { ok: true })
   }
 
@@ -750,6 +819,7 @@ async function handleApi(req, res, url, body) {
       now: Math.floor(Date.now() / 1000),
       poll_interval: CFG.poll_interval,
       demo: !!CFG.demo_mode,
+      me: currentActor,
       machines,
       audit: state.audit.slice(0, 60)
     })
@@ -866,12 +936,10 @@ async function main() {
   }
 
   server.listen(port, host, () => {
-    const pw = CFG.admin_password || ''
-    const shown = pw.startsWith('sha256$') ? 'sha256$****（已存哈希）' : pw
     console.log('─'.repeat(56))
     console.log('  GPU Ops Center API 已启动')
     console.log(`  监听     http://${host === '0.0.0.0' ? '0.0.0.0' : host}:${port}/`)
-    console.log(`  管理密码 ${shown}  （config.json 可修改）`)
+    console.log(`  管理员   ${admins.map(a => a.name).join('、')}（admins.json，可在网页"管理员"页维护）`)
     console.log(`  采集     ${CFG.demo_mode ? '演示模式' : `SSH 轮询，间隔 ${CFG.poll_interval}s`}`)
     console.log('─'.repeat(56))
   })
