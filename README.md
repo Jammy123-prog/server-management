@@ -169,6 +169,30 @@ sudo systemctl enable --now gpu-ops-center
 - **总览**：统计卡（在线机器 / GPU 平均利用率 / 显存占用 / 活跃用户）→ 每台机器卡片（GPU、CPU/内存/磁盘、趋势曲线、"用户 N / 占卡 N"徽标）→ 展开看 GPU 进程明细和登录用户 → 底部全集群占卡进程表。**搜索框**支持按机器名或 IP 过滤机器卡片；机器超过 8 台（4 行）时卡片区自动改为内部滚动浏览
 - **机器管理**：网页上增删受管机器（名称 + IP），支持先"测试连接"验证 SSH 免密可达；改动自动写入 `config.json` 并立即生效，无需重启服务。新增机器只需在中心节点对新机器做一次 `ssh-copy-id`（或密码引导，见第三章）
 - **密码引导**：采集失败且报 `Permission denied` 时，总览页 / 机器管理页出现"密码引导接入"按钮——输入目标机器一次登录密码（root 或有 sudo 权限的账号），中心节点自动完成 gpuops 建号 + 公钥安装 + 受限 sudo 配置，随后立即重新采集。密码仅当次使用、不落盘，操作记入审计。要求中心节点 OpenSSH >= 8.4（Ubuntu 22.04 / Debian 12 默认满足，`ssh -V` 可查）
+
+### 接入 Windows 机器（仅监控）
+
+Windows 机器同样通过 SSH 采集（需已安装 NVIDIA 驱动，`nvidia-smi` 可用）：
+
+1. **在 Windows 上启用 OpenSSH 服务器**（管理员 PowerShell，一次性）：
+
+```powershell
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+Start-Service sshd
+Set-Service -Name sshd -StartupType Automatic
+# 确认防火墙放行（默认规则已含，可查）：
+Get-NetFirewallRule -Name *ssh*
+```
+
+2. **分发公钥（网页即可）**：添加机器后（SSH 登录用户填该 Windows 账号，如 `zpmc`），在离线机器卡片上点"**密码引导**"，输入该账号一次登录密码，中心节点自动把公钥写入正确位置——管理员账号写入 `C:\ProgramData\ssh\administrators_authorized_keys`（含 ACL 修复），普通账号写入 `%USERPROFILE%\.ssh\authorized_keys`，并记住该登录用户。
+
+> 也可在中心节点手动执行 `ssh-copy-id zpmc@Windows机器IP`；注意管理员账号的个人 authorized_keys 会被 OpenSSH 忽略，公钥须写入系统级文件（网页引导会自动处理）。
+
+3. **网页添加**：机器管理 → 填名称 / IP → 操作系统选 **Windows** → SSH 登录用户填 `zpmc` → 测试连接 → 添加。
+
+Windows 机器支持采集：GPU（利用率 / 显存 / 温度 / 功耗）、占卡进程（用户 / 进程 / 显存）、CPU / 内存 / 磁盘（C 盘）、登录用户（`query user`）；支持网页密码引导分发公钥；暂不支持：账号管理（如需管理 Windows 账号请在本机操作）。
+
+> 若引导时报"无法连接：目标 Windows 可能未启用 OpenSSH 服务器"，说明第 1 步未完成——没有任何远程通道时无法远程安装 SSH 服务，需在该机器上手动执行一次第 1 步的三条命令。
 - **用户管理**：填用户名 → 生成密码 → 勾选机器（支持全选）→ 可选 sudo → 创建；**机器×用户矩阵**每台一张卡，悬停用户行出现"改密 / 删除"
 - **操作审计**：所有账号操作持久化到 `audit.json`，含每台机器的成败与失败原因、操作管理员
 

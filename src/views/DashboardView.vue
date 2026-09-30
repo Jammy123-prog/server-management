@@ -108,7 +108,7 @@ function whoUnique(m) {
             <span class="dot" :class="m.online ? 'on' : 'off'"></span>
             <div>
               <div class="name">{{ m.host }}</div>
-              <div class="ip">{{ m.ip }}{{ m.online ? '' : ' · 离线' }}</div>
+              <div class="ip">{{ m.ip }}{{ m.os === 'windows' ? ' · Windows' : '' }}{{ m.online ? '' : ' · 离线' }}</div>
             </div>
             <div class="spacer"></div>
             <span class="chip">用户 <b>{{ (m.who || []).length }}</b></span>
@@ -169,8 +169,8 @@ function whoUnique(m) {
               采集失败：{{ m.error || '未知错误' }}
               <div style="color:var(--faint);margin-top:4px">机器本身不受影响，仅中心节点无法读取指标</div>
             </div>
-            <div v-if="/Permission denied/i.test(m.error || '')" style="margin-top:2px">
-              <button class="iact" @click="bootTarget = { host: m.host, ip: m.ip }">密码引导接入</button>
+            <div v-if="m.os === 'windows' || /Permission denied/i.test(m.error || '')" style="margin-top:2px">
+              <button class="iact" @click="bootTarget = { host: m.host, ip: m.ip, os: m.os }">密码引导接入</button>
             </div>
           </template>
         </div>

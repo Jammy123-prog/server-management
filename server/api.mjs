@@ -88,7 +88,7 @@ function sshExec(machine, script, timeoutMs = 20000) {
       '-o', 'ConnectTimeout=6',
       '-o', 'StrictHostKeyChecking=accept-new',
       '-p', String(CFG.ssh_port || 22),
-      `${CFG.ssh_user || 'root'}@${machine.ip}`,
+      `${machine.ssh_user || CFG.ssh_user || 'root'}@${machine.ip}`,
       script
     ]
     const p = spawn('ssh', args)
@@ -181,6 +181,39 @@ echo '@@OK'
 `
 }
 
+/**
+ * Windows 远程引导：用密码登录后把中心节点公钥写入正确的位置。
+ * 管理员账号 → C:\ProgramData\ssh\administrators_authorized_keys（含 ACL 修复）；
+ * 普通账号 → %USERPROFILE%\.ssh\authorized_keys。
+ * 前提：目标机器已启用 OpenSSH 服务器（无法在无任何通道时远程安装）。
+ */
+function buildBootstrapWinScript(pubKey) {
+  const ps = `
+$ErrorActionPreference = 'Stop'
+$pub = @'
+${pubKey}
+'@
+$km = ($pub.Trim() -split '\\s+')[1]
+if (-not $km) { echo '@@ERR:no_key'; exit }
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if ($isAdmin) {
+  $f = 'C:\\ProgramData\\ssh\\administrators_authorized_keys'
+  if (-not (Test-Path $f)) { New-Item -ItemType File -Path $f -Force | Out-Null }
+  $exists = (Get-Content $f -Raw) -match [regex]::Escape($km)
+  if (-not $exists) { Add-Content -Path $f -Value $pub.Trim() -Encoding ascii }
+  icacls $f /inheritance:r /grant 'SYSTEM:F' /grant 'BUILTIN\\Administrators:F' | Out-Null
+} else {
+  $d = Join-Path $env:USERPROFILE '.ssh'
+  if (-not (Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
+  $f = Join-Path $d 'authorized_keys'
+  $exists = (Test-Path $f) -and ((Get-Content $f -Raw) -match [regex]::Escape($km))
+  if (-not $exists) { Add-Content -Path $f -Value $pub.Trim() -Encoding ascii }
+}
+echo '@@OK'
+`
+  return 'powershell -NoProfile -EncodedCommand ' + Buffer.from(ps, 'utf16le').toString('base64')
+}
+
 const POLL_SCRIPT = `
 echo '@@GPU';
 nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw --format=csv,noheader,nounits 2>/dev/null;
@@ -205,6 +238,39 @@ echo '@@SUDO';
 getent group sudo 2>/dev/null | cut -d: -f4;
 echo '@@END';
 `
+
+// ---- Windows 采集：PowerShell 脚本经 -EncodedCommand 下发（base64/UTF-16LE，规避 cmd/PS 双层引号问题） ----
+
+const POLL_PS_WIN = `
+echo '@@GPU'
+nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw --format=csv,noheader,nounits 2>$null
+echo '@@PROC'
+nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits 2>$null
+echo '@@PS'
+$ids = @(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>$null)
+foreach ($i in $ids) {
+  $pr = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $i.Trim()) -ErrorAction SilentlyContinue
+  if ($pr) {
+    $o = $pr | Invoke-CimMethod -MethodName GetOwner
+    '{0},{1},{2}' -f $i.Trim(), $o.User, $pr.Name
+  }
+}
+echo '@@SYS'
+$os = Get-CimInstance Win32_OperatingSystem
+$cl = (Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average).Average
+$mt = [math]::Round($os.TotalVisibleMemorySize * 1024)
+$mu = $mt - [math]::Round($os.FreePhysicalMemory * 1024)
+$d = Get-CimInstance Win32_LogicalDisk | Where-Object { $_.DeviceID -eq 'C:' }
+$dt = [math]::Round($d.Size)
+$du = $dt - [math]::Round($d.FreeSpace)
+'{0};{1};{2};{3};{4};{5}' -f $cl, $env:NUMBER_OF_PROCESSORS, $mt, $mu, $dt, $du
+echo '@@WHO'
+query user 2>$null
+echo '@@END'
+`
+
+const POLL_SCRIPT_WIN = 'powershell -NoProfile -EncodedCommand ' +
+  Buffer.from(POLL_PS_WIN, 'utf16le').toString('base64')
 
 // ---------------------------------------------------------------- parsing
 
@@ -284,6 +350,72 @@ function parsePoll(out) {
   }
 }
 
+/** Windows 版采集解析：GPU/PROC 格式与 nvidia-smi 一致；SYS 为单行 ; 分隔；WHO 来自 query user */
+function parsePollWin(out) {
+  const sections = {}
+  let cur = null
+  for (const line of out.replace(/\r\n/g, '\n').split('\n')) {
+    if (line.startsWith('@@')) { cur = line.slice(2).trim(); sections[cur] = [] }
+    else if (cur) sections[cur].push(line)
+  }
+
+  const gpus = []
+  for (const line of sections.GPU || []) {
+    const p = line.split(',').map(x => x.trim())
+    if (p.length < 7) continue
+    const memTotal = parseIntSafe(p[4]), memUsed = parseIntSafe(p[3])
+    gpus.push({
+      index: parseIntSafe(p[0]), name: p[1],
+      util: parseIntSafe(p[2]),
+      mem_used: memUsed, mem_total: memTotal,
+      mem_pct: memTotal ? Math.round(memUsed * 100 / memTotal) : 0,
+      temp: parseIntSafe(p[5]), power: parseFloatSafe(p[6])
+    })
+  }
+
+  const psMap = {}
+  for (const line of sections.PS || []) {
+    const p = line.split(',')
+    if (p.length >= 3) {
+      const pid = p[0].trim()
+      psMap[pid] = { user: p[1].trim(), comm: p.slice(2).join(',').trim(), etime: '-' }
+    }
+  }
+  const procs = []
+  for (const line of sections.PROC || []) {
+    const p = line.split(',').map(x => x.trim())
+    if (p.length < 2) continue
+    const info = psMap[p[0]] || { user: '?', comm: '?', etime: '-' }
+    procs.push({ pid: p[0], mem_mb: parseIntSafe(p[1]), ...info })
+  }
+  procs.sort((a, b) => b.mem_mb - a.mem_mb)
+
+  // SYS 单行：cpuLoad;cores;memTotalB;memUsedB;diskTotalB;diskUsedB
+  const sys = (sections.SYS || []).join('').trim()
+  const v = sys.split(';').map(x => parseFloatSafe(x))
+  const cpuPct = Math.min(100, Math.round(v[0] || 0))
+  const cores = Math.max(1, Math.round(v[1] || 1))
+  const memTot = v[2] || 0, memUsed = v[3] || 0
+  const diskTot = v[4] || 0, diskUsed = v[5] || 0
+
+  // WHO 来自 query user：USERNAME SESSIONNAME ID STATE IDLE TIME LOGON TIME（行首可能带 >）
+  const who = []
+  for (const line of sections.WHO || []) {
+    const parts = line.trim().split(/\s+/)
+    if (!parts[0] || /^>?username$/i.test(parts[0])) continue
+    const user = parts[0] === '>' ? parts[1] : parts[0]
+    if (!user || /^username$/i.test(user)) continue
+    who.push({ user, tty: parts[parts.length - 5] || '-', when: parts.slice(-2).join(' '), from: '-' })
+  }
+
+  return {
+    gpus, procs, who,
+    cpu: { load1: Math.round((v[0] || 0) * 100) / 100, cores, used_pct: cpuPct },
+    mem: { total_b: memTot, used_b: memUsed, pct: memTot ? Math.round(memUsed * 100 / memTot) : 0 },
+    disk: { total_b: diskTot, used_b: diskUsed, pct: diskTot ? Math.round(diskUsed * 100 / diskTot) : 0 }
+  }
+}
+
 // ---------------------------------------------------------------- state
 
 const state = {
@@ -295,6 +427,8 @@ const state = {
 for (const m of CFG.machines) {
   state.machines.set(m.host, {
     host: m.host, ip: m.ip,
+    os: m.os === 'windows' ? 'windows' : 'linux',
+    ssh_user: m.ssh_user || '',
     online: false, last_seen: 0, error: '尚未采集',
     gpus: [], procs: [], who: [],
     cpu: {}, mem: {}, disk: {},
@@ -317,8 +451,9 @@ async function pollMachine(host) {
   const m = state.machines.get(host)
   if (!m) return
   try {
-    const out = await sshExec(m, POLL_SCRIPT)
-    const data = parsePoll(out)
+    const isWin = m.os === 'windows'
+    const out = await sshExec(m, isWin ? POLL_SCRIPT_WIN : POLL_SCRIPT, isWin ? 40000 : 20000)
+    const data = isWin ? parsePollWin(out) : parsePoll(out)
     Object.assign(m, data)
     m.online = true
     m.last_seen = Math.floor(Date.now() / 1000)
@@ -726,19 +861,22 @@ async function handleApi(req, res, url, body) {
   if (req.method === 'POST' && pathname === '/api/machines/add') {
     const host = String(body.host || '').trim()
     const ip = String(body.ip || '').trim()
+    const os = body.os === 'windows' ? 'windows' : 'linux'
+    const sshUser = String(body.ssh_user || '').trim()
     if (!HOSTNAME_RE.test(host)) return sendJson(res, { error: '机器名不合法（字母/数字开头，可含 . _ -，最长 63 字符）' }, 400)
     if (!ADDR_RE.test(ip)) return sendJson(res, { error: 'IP / 主机名不合法' }, 400)
+    if (os === 'windows' && !sshUser) return sendJson(res, { error: 'Windows 机器必须填写 SSH 登录用户名（该机器的 Windows 账号）' }, 400)
     if (state.machines.has(host)) return sendJson(res, { error: `机器「${host}」已存在` }, 400)
     if ([...state.machines.values()].some(m => m.ip === ip)) return sendJson(res, { error: `地址 ${ip} 已被机器「${[...state.machines.values()].find(m => m.ip === ip).host}」使用` }, 400)
 
     state.machines.set(host, {
-      host, ip,
+      host, ip, os, ssh_user: sshUser,
       online: false, last_seen: 0, error: '尚未采集',
       gpus: [], procs: [], who: [],
       cpu: {}, mem: {}, disk: {},
       history: []
     })
-    CFG.machines.push({ host, ip })
+    CFG.machines.push({ host, ip, os, ssh_user: sshUser })
     const saved = saveConfig()
 
     if (CFG.demo_mode) {
@@ -764,9 +902,10 @@ async function handleApi(req, res, url, body) {
 
   if (req.method === 'POST' && pathname === '/api/machines/test') {
     const ip = String(body.ip || '').trim()
+    const sshUser = String(body.ssh_user || '').trim()
     if (!ADDR_RE.test(ip)) return sendJson(res, { error: 'IP / 主机名不合法' }, 400)
     try {
-      await sshExec({ ip }, 'echo @@SSH_OK', 10000)
+      await sshExec({ ip, ssh_user: sshUser }, 'echo @@SSH_OK', 12000)
       return sendJson(res, { ok: true })
     } catch (e) {
       return sendJson(res, { ok: false, error: String(e.message || e).slice(0, 200) })
@@ -791,6 +930,23 @@ async function handleApi(req, res, url, body) {
 
     try {
       const pub = ensurePubKey()
+
+      if (m.os === 'windows') {
+        // Windows：写入公钥 + 持久化该机器的 SSH 登录用户
+        const out = await sshExecWithPassword({ ip: m.ip, user: username }, password, buildBootstrapWinScript(pub), 60000)
+        if (!out.includes('@@OK')) {
+          throw new Error(out.includes('@@ERR:no_key') ? '中心节点公钥异常' : '引导脚本执行失败：' + out.replace(/\s+/g, ' ').slice(-120))
+        }
+        m.ssh_user = username
+        const cm = CFG.machines.find(x => x.host === host)
+        if (cm) cm.ssh_user = username
+        saveConfig()
+        state.usersCache.delete(host)
+        pollMachine(host).catch(() => {})
+        auditAdd('bootstrap', username, [host], true, 'windows')
+        return sendJson(res, { ok: true })
+      }
+
       const out = await sshExecWithPassword({ ip: m.ip, user: username }, password, buildBootstrapScript(pub, password))
       if (!out.includes('@@OK')) {
         const why = out.includes('no_sudo')
@@ -805,7 +961,10 @@ async function handleApi(req, res, url, body) {
       auditAdd('bootstrap', username, [host], true)
       return sendJson(res, { ok: true })
     } catch (e) {
-      const msg = String(e.message || e)
+      let msg = String(e.message || e)
+      if (m.os === 'windows' && /refused|timed?\s?out|No route|unreachable/i.test(msg)) {
+        msg = '无法连接：目标 Windows 可能未启用 OpenSSH 服务器。请先在该机器上（管理员 PowerShell）执行：Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0; Start-Service sshd; Set-Service sshd -StartupType Automatic，然后重试（详见 README）'
+      }
       auditAdd('bootstrap', username, [host], false, msg.slice(0, 200))
       return sendJson(res, { error: msg.includes('Permission denied') ? '密码错误或该账号不允许密码登录' : msg }, 400)
     }
@@ -827,13 +986,16 @@ async function handleApi(req, res, url, body) {
 
   if (req.method === 'GET' && pathname === '/api/users') {
     const out = {}
-    for (const host of state.machines.keys()) {
-      out[host] = CFG.demo_mode ? demo.users(host) : await collectUsers(host)
+    for (const m of state.machines.values()) {
+      out[m.host] = m.os === 'windows'
+        ? { ts: Date.now() / 1000, users: [], error: 'Windows 机器仅支持监控，账号管理仅限 Linux 机器' }
+        : (CFG.demo_mode ? demo.users(m.host) : await collectUsers(m.host))
     }
     return sendJson(res, { users: out })
   }
 
-  const hostList = arr => (Array.isArray(arr) ? arr : []).filter(h => state.machines.has(h))
+  const hostList = arr => (Array.isArray(arr) ? arr : [])
+    .filter(h => { const m = state.machines.get(h); return m && m.os !== 'windows' })
 
   if (req.method === 'POST' && pathname === '/api/users/add') {
     const username = String(body.username || '').trim()

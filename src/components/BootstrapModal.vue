@@ -1,10 +1,10 @@
 <script setup>
 /** SSH 密码引导弹窗：为采集失败的机器，用一次密码自动装好免密通道 */
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { api } from '../api.js'
 
 const props = defineProps({
-  target: { type: Object, default: null },   // { host, ip }，为 null 时隐藏
+  target: { type: Object, default: null },   // { host, ip, os }，为 null 时隐藏
   toast: { type: Function, required: true }
 })
 const emit = defineEmits(['close', 'done'])
@@ -12,9 +12,10 @@ const emit = defineEmits(['close', 'done'])
 const username = ref('root')
 const password = ref('')
 const busy = ref(false)
+const isWin = computed(() => props.target?.os === 'windows')
 
 watch(() => props.target, t => {
-  if (t) { username.value = 'root'; password.value = ''; busy.value = false }
+  if (t) { username.value = t.os === 'windows' ? '' : 'root'; password.value = ''; busy.value = false }
 })
 
 async function run() {
@@ -42,15 +43,22 @@ async function run() {
   <div class="modal-mask" :class="{ show: !!target }" @click.self="!busy && emit('close')">
     <div class="modal bezel"><div class="core">
       <template v-if="target">
-        <h3>密码引导接入</h3>
+        <h3>密码引导接入{{ isWin ? '（Windows）' : '' }}</h3>
         <div class="msub">
-          用一次密码登录 <b style="color:var(--text)">{{ target.host }}</b>（{{ target.ip }}），
-          自动完成：创建 gpuops 账号 → 安装公钥 → 配置受限 sudo，之后走免密采集。<br>
-          该账号需为 root 或有 sudo 权限；机器上现有用户与密码不受影响。密码仅本次使用，不保存。
+          <template v-if="isWin">
+            用一次密码登录 <b style="color:var(--text)">{{ target.host }}</b>（{{ target.ip }}），自动把中心节点公钥写入
+            {{ username && '该账号' }}正确位置（管理员账号写入系统级文件并修复权限），之后走免密采集并记住该登录用户。<br>
+            前提：目标 Windows 已启用「OpenSSH 服务器」；密码仅本次使用，不保存。
+          </template>
+          <template v-else>
+            用一次密码登录 <b style="color:var(--text)">{{ target.host }}</b>（{{ target.ip }}），
+            自动完成：创建 gpuops 账号 → 安装公钥 → 配置受限 sudo，之后走免密采集。<br>
+            该账号需为 root 或有 sudo 权限；机器上现有用户与密码不受影响。密码仅本次使用，不保存。
+          </template>
         </div>
         <div class="field">
           <label>登录用户名</label>
-          <input v-model="username" class="inp" placeholder="通常为 root" autocomplete="off">
+          <input v-model="username" class="inp" :placeholder="isWin ? '该机器的 Windows 账号，如 zpmc' : '通常为 root'" autocomplete="off">
         </div>
         <div class="field">
           <label>登录密码</label>
