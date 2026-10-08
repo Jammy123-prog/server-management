@@ -224,7 +224,7 @@ PIDS=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | t
 if [ -n "$PIDS" ]; then ps -o pid:12=,user:28=,comm:40=,etime:20= -p "$PIDS" 2>/dev/null; fi;
 echo '@@SYS';
 cat /proc/loadavg;
-LC_ALL=C awk '/^MemTotal:/{t=$2} /^MemAvailable:/{a=$2} END{printf "%d %d\n", t*1024, (t-a)*1024}' /proc/meminfo 2>/dev/null;
+LC_ALL=C awk '/^MemTotal:/{t=$2} /^MemAvailable:/{a=$2} /^MemFree:/{f=$2} END{if(a=="")a=f; printf "%d %d\\n", t*1024, (t-a)*1024}' /proc/meminfo 2>/dev/null;
 LC_ALL=C df -B1 / 2>/dev/null | awk 'NR==2{print $2,$3,$5}';
 nproc;
 echo '@@WHO';
