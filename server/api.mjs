@@ -224,8 +224,8 @@ PIDS=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | t
 if [ -n "$PIDS" ]; then ps -o pid:12=,user:28=,comm:40=,etime:20= -p "$PIDS" 2>/dev/null; fi;
 echo '@@SYS';
 cat /proc/loadavg;
-free -b 2>/dev/null | awk 'NR==2{print $2,$3}';
-df -B1 / 2>/dev/null | awk 'NR==2{print $2,$3,$5}';
+LC_ALL=C awk '/^MemTotal:/{t=$2} /^MemAvailable:/{a=$2} END{printf "%d %d\n", t*1024, (t-a)*1024}' /proc/meminfo 2>/dev/null;
+LC_ALL=C df -B1 / 2>/dev/null | awk 'NR==2{print $2,$3,$5}';
 nproc;
 echo '@@WHO';
 who -s 2>/dev/null;
@@ -323,6 +323,12 @@ function parsePoll(out) {
     const v = sysl[1].trim().split(/\s+/)
     memTotal = parseIntSafe(v[0]); memUsed = parseIntSafe(v[1])
   }
+  // 防御：Linux 上 used 不可能超过 total，超出说明该机器返回了异常格式（记录原始数据便于排查）
+  let memPct = memTotal ? Math.round(memUsed * 100 / memTotal) : 0
+  if (memPct > 100) {
+    console.warn(`[poll] 内存解析异常 total=${memTotal} used=${memUsed} raw="${String(sysl[1]).trim()}"`)
+    memPct = 100
+  }
   let diskTotal = 0, diskUsed = 0, diskPct = 0
   if (sysl[2]) {
     const v = sysl[2].trim().split(/\s+/)
@@ -345,7 +351,7 @@ function parsePoll(out) {
   return {
     gpus, procs, who,
     cpu: { load1: Math.round(load1 * 100) / 100, cores, used_pct: cores ? Math.min(100, Math.round(load1 * 100 / cores)) : 0 },
-    mem: { total_b: memTotal, used_b: memUsed, pct: memTotal ? Math.round(memUsed * 100 / memTotal) : 0 },
+    mem: { total_b: memTotal, used_b: memUsed, pct: memPct },
     disk: { total_b: diskTotal, used_b: diskUsed, pct: diskPct }
   }
 }
