@@ -224,7 +224,7 @@ PIDS=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | t
 if [ -n "$PIDS" ]; then ps -o pid:12=,user:28=,comm:40=,etime:20= -p "$PIDS" 2>/dev/null; fi;
 echo '@@SYS';
 cat /proc/loadavg;
-LC_ALL=C awk '/^MemTotal:/{t=$2} /^MemAvailable:/{a=$2} /^MemFree:/{f=$2} END{if(a=="")a=f; printf "%d %d\\n", t*1024, (t-a)*1024}' /proc/meminfo 2>/dev/null;
+LC_ALL=C awk '/^MemTotal:/{t=$2} /^MemAvailable:/{a=$2} /^MemFree:/{f=$2} END{if(a=="")a=f; print t, a}' /proc/meminfo 2>/dev/null;
 LC_ALL=C df -B1 / 2>/dev/null | awk 'NR==2{print $2,$3,$5}';
 nproc;
 echo '@@WHO';
@@ -320,8 +320,12 @@ function parsePoll(out) {
   const cores = sysl[3] ? parseIntSafe(sysl[3]) : 1
   let memTotal = 0, memUsed = 0
   if (sysl[1]) {
+    // sysl[1] = "MemTotal_kb MemAvailable_kb"（procfs 原始值，字节换算在 Node 端做，避免 awk 大数溢出）
     const v = sysl[1].trim().split(/\s+/)
-    memTotal = parseIntSafe(v[0]); memUsed = parseIntSafe(v[1])
+    const totalKb = parseIntSafe(v[0])
+    const availKb = parseIntSafe(v[1])
+    memTotal = totalKb * 1024
+    memUsed = Math.max(0, totalKb - availKb) * 1024
   }
   // 防御：Linux 上 used 不可能超过 total，超出说明该机器返回了异常格式（记录原始数据便于排查）
   let memPct = memTotal ? Math.round(memUsed * 100 / memTotal) : 0
