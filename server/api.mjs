@@ -227,6 +227,8 @@ cat /proc/loadavg;
 LC_ALL=C awk '/^MemTotal:/{t=$2} /^MemAvailable:/{a=$2} /^MemFree:/{f=$2} END{if(a=="")a=f; print t, a}' /proc/meminfo 2>/dev/null;
 LC_ALL=C df -B1 / 2>/dev/null | awk 'NR==2{print $2,$3,$5}';
 nproc;
+S1=$(LC_ALL=C head -n 1 /proc/stat 2>/dev/null); sleep 1; S2=$(LC_ALL=C head -n 1 /proc/stat 2>/dev/null);
+LC_ALL=C awk -v s1="$S1" -v s2="$S2" 'BEGIN{n1=split(s1,f1," ");n2=split(s2,f2," ");if(n1<5||n2<5){print "";exit}i1=f1[5]+f1[6];t1=0;for(j=2;j<=9;j++)t1+=f1[j];i2=f2[5]+f2[6];t2=0;for(j=2;j<=9;j++)t2+=f2[j];dt=t2-t1;di=i2-i1;if(dt>0)printf "%d",int((dt-di)*100/dt);else print ""}';
 echo '@@WHO';
 who -s 2>/dev/null;
 echo '@@END';
@@ -352,9 +354,13 @@ function parsePoll(out) {
     }
   }
 
+  // 瞬时整机 CPU%（/proc/stat 双采样差值，与 top/监控面板同口径）；采样失败回退 loadavg 口径
+  const cpuInstRaw = sysl[4] != null ? String(sysl[4]).trim() : ''
+  const cpuInst = cpuInstRaw !== '' ? parseIntSafe(cpuInstRaw) : null
+
   return {
     gpus, procs, who,
-    cpu: { load1: Math.round(load1 * 100) / 100, cores, used_pct: cores ? Math.min(100, Math.round(load1 * 100 / cores)) : 0 },
+    cpu: { load1: Math.round(load1 * 100) / 100, cores, used_pct: cpuInst != null ? Math.min(100, cpuInst) : (cores ? Math.min(100, Math.round(load1 * 100 / cores)) : 0) },
     mem: { total_b: memTotal, used_b: memUsed, pct: memPct },
     disk: { total_b: diskTotal, used_b: diskUsed, pct: diskPct }
   }
