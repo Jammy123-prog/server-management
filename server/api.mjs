@@ -463,9 +463,12 @@ function auditAdd(action, user, machines, ok, detail = '') {
   try { fs.writeFileSync(AUDIT_PATH, JSON.stringify(state.audit, null, 1)) } catch {}
 }
 
+const pollInFlight = new Set()   // 防重入：间隔小于采集耗时时，避免同一机器堆积并发 SSH
 async function pollMachine(host) {
   const m = state.machines.get(host)
   if (!m) return
+  if (pollInFlight.has(host)) return
+  pollInFlight.add(host)
   try {
     const isWin = m.os === 'windows'
     const out = await sshExec(m, isWin ? POLL_SCRIPT_WIN : POLL_SCRIPT, isWin ? 40000 : 20000)
@@ -485,6 +488,8 @@ async function pollMachine(host) {
   } catch (e) {
     m.online = false
     m.error = String(e.message || e)
+  } finally {
+    pollInFlight.delete(host)
   }
 }
 
@@ -742,6 +747,17 @@ function sessionOk(req) {
   return true
 }
 
+// 清理过期会话，避免多端登录后 Map 无限增长
+function sweepSessions() {
+  const now = Date.now()
+  for (const [t, s] of sessions) if (s.exp <= now) sessions.delete(t)
+}
+
+// 吊销指定管理员的所有会话（删除账号等场景调用）
+function revokeSessionsOf(name) {
+  for (const [t, s] of sessions) if (s.name === name) sessions.delete(t)
+}
+
 // ---------------------------------------------------------------- http
 
 const MIME = {
@@ -815,8 +831,8 @@ async function handleApi(req, res, url, body) {
     const account = verifyAdmin(username, String(body.password || ''))
     if (account) {
       failCount = 0
+      sweepSessions()
       const token = crypto.randomBytes(24).toString('hex')
-      sessions.clear()
       sessions.set(token, { exp: now + 12 * 3600 * 1000, name: account.name })
       account.last_login = Math.floor(now / 1000)
       saveAdmins()
@@ -867,6 +883,7 @@ async function handleApi(req, res, url, body) {
     if (name === currentActor) return sendJson(res, { error: '不能删除当前登录的自己' }, 400)
     if (admins.length <= 1) return sendJson(res, { error: '至少保留一名管理员' }, 400)
     admins = admins.filter(a => a.name !== name)
+    revokeSessionsOf(name)
     saveAdmins()
     auditAdd('admin_delete', name, [], true)
     return sendJson(res, { ok: true })
@@ -1102,7 +1119,7 @@ async function main() {
 
   if (CFG.demo_mode) {
     demo.seed()
-    setInterval(() => demo.tick(), Math.max(2, CFG.poll_interval) * 1000)
+    setInterval(() => demo.tick(), Math.max(1, CFG.poll_interval) * 1000)
     demo.tick()
     console.log('[demo] 演示模式：使用模拟数据，不连接真实机器')
   } else {
@@ -1110,7 +1127,7 @@ async function main() {
       await Promise.allSettled([...state.machines.keys()].map(h => pollMachine(h)))
     }
     pollOnce()
-    setInterval(pollOnce, Math.max(5, CFG.poll_interval) * 1000)
+    setInterval(pollOnce, Math.max(1, CFG.poll_interval) * 1000)
   }
 
   server.listen(port, host, () => {
