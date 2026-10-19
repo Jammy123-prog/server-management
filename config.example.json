@@ -1,0 +1,10 @@
+{
+  "listen_host": "0.0.0.0",
+  "listen_port": 8600,
+  "admin_password": "changeme",
+  "poll_interval": 10,
+  "ssh_user": "gpuops",
+  "ssh_port": 22,
+  "demo_mode": false,
+  "machines": []
+}
