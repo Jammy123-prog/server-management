@@ -26,6 +26,7 @@ const ROOT = path.dirname(__dirname)
 const CONFIG_PATH = path.join(ROOT, 'config.json')
 const AUDIT_PATH = path.join(ROOT, 'audit.json')
 const ADMINS_PATH = path.join(ROOT, 'admins.json')
+const ASSETS_PATH = path.join(ROOT, 'assets.json')
 const DIST_DIR = path.join(ROOT, 'dist')
 
 // ---------------------------------------------------------------- config
@@ -717,6 +718,23 @@ function saveAdmins() {
   }
 }
 
+// ---- 资产设备存储（assets.json：[{id, type, model, user, project, project_no, ip, username, password, note, status, created, updated}]） ----
+// 凭据敏感，assets.json 不入库（.gitignore 已排除），仅保存在中心节点本地
+
+let assets = []
+try { assets = JSON.parse(fs.readFileSync(ASSETS_PATH, 'utf-8')) } catch {}
+if (!Array.isArray(assets)) assets = []
+
+function saveAssets() {
+  try {
+    fs.writeFileSync(ASSETS_PATH, JSON.stringify(assets, null, 1))
+    return true
+  } catch (e) {
+    console.error('[assets] 写入失败:', e.message)
+    return false
+  }
+}
+
 // 首次启动：用 config.admin_password 生成默认管理员 admin（保留旧单密码的兼容）
 if (!admins.length) {
   admins.push({
@@ -943,6 +961,72 @@ async function handleApi(req, res, url, body) {
     } catch (e) {
       return sendJson(res, { ok: false, error: String(e.message || e).slice(0, 200) })
     }
+  }
+
+  // ---- 资产设备管理（assets.json，网页增删改查 / 导入，立即持久化） ----
+
+  const ASSET_STATUS = ['在用', '闲置', '维修', '报废']
+
+  function sanitizeAsset(it) {
+    return {
+      type: String(it.type || '其他').trim().slice(0, 40) || '其他',
+      model: String(it.model || '').trim().slice(0, 120),
+      user: String(it.user || '').trim().slice(0, 60),
+      project: String(it.project || '').trim().slice(0, 120),
+      project_no: String(it.project_no || '').trim().slice(0, 60),
+      ip: String(it.ip || '').trim().slice(0, 80),
+      username: String(it.username || '').trim().slice(0, 80),
+      password: String(it.password || '').slice(0, 120),
+      note: String(it.note || '').trim().slice(0, 200),
+      status: ASSET_STATUS.includes(it.status) ? it.status : '在用'
+    }
+  }
+
+  if (req.method === 'GET' && pathname === '/api/assets') {
+    return sendJson(res, { assets })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/assets/save') {
+    const clean = sanitizeAsset(body)
+    const now = Math.floor(Date.now() / 1000)
+    const id = String(body.id || '').trim()
+    if (id) {
+      const it = assets.find(a => a.id === id)
+      if (!it) return sendJson(res, { error: '资产不存在' }, 400)
+      Object.assign(it, clean, { updated: now })
+      const saved = saveAssets()
+      auditAdd('asset_update', clean.model || clean.type, [], saved, saved ? '' : 'assets.json 写入失败（重启后丢失）')
+      return sendJson(res, { ok: saved, assets })
+    }
+    const nid = 'a' + now.toString(36) + crypto.randomBytes(3).toString('hex')
+    assets.push({ id: nid, ...clean, created: now, updated: now })
+    const saved = saveAssets()
+    auditAdd('asset_add', clean.model || clean.type, [], saved, saved ? '' : 'assets.json 写入失败（重启后丢失）')
+    return sendJson(res, { ok: saved, assets })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/assets/delete') {
+    const id = String(body.id || '').trim()
+    const it = assets.find(a => a.id === id)
+    if (!it) return sendJson(res, { error: '资产不存在' }, 400)
+    assets = assets.filter(a => a.id !== id)
+    const saved = saveAssets()
+    auditAdd('asset_delete', it.model || it.type, [], saved, saved ? '' : 'assets.json 写入失败（重启后仍存在）')
+    return sendJson(res, { ok: saved, assets })
+  }
+
+  if (req.method === 'POST' && pathname === '/api/assets/import') {
+    const items = Array.isArray(body.items) ? body.items : []
+    if (!items.length) return sendJson(res, { error: '导入内容为空' }, 400)
+    if (items.length > 500) return sendJson(res, { error: '单次最多导入 500 条' }, 400)
+    const now = Math.floor(Date.now() / 1000)
+    for (const raw of items) {
+      if (!raw || typeof raw !== 'object') continue
+      assets.push({ id: 'a' + now.toString(36) + crypto.randomBytes(3).toString('hex'), ...sanitizeAsset(raw), created: now, updated: now })
+    }
+    const saved = saveAssets()
+    auditAdd('asset_import', `+${items.length} 条`, [], saved, saved ? '' : 'assets.json 写入失败（重启后丢失）')
+    return sendJson(res, { ok: saved, assets })
   }
 
   // ---- 密码引导：用一次密码登录目标机器，自动装好免密通道（gpuops + 公钥 + 受限 sudo） ----

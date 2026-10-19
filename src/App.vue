@@ -8,6 +8,7 @@ import MachinesView from './views/MachinesView.vue'
 import UsersView from './views/UsersView.vue'
 import AdminsView from './views/AdminsView.vue'
 import AuditView from './views/AuditView.vue'
+import AssetsView from './views/AssetsView.vue'
 
 const authed = ref(null)          // null=检查中, false, true
 const currentView = ref('dash')
@@ -18,6 +19,7 @@ let toastTimer = null
 const NAV = [
   { id: 'dash', label: '总览' },
   { id: 'machines', label: '机器管理' },
+  { id: 'assets', label: '资产管理' },
   { id: 'users', label: '用户管理' },
   { id: 'admins', label: '管理员' },
   { id: 'audit', label: '操作审计' }
@@ -106,6 +108,7 @@ onUnmounted(() => {
     <KeepAlive>
       <DashboardView v-if="currentView === 'dash'" :state="state" :on-refresh="poll" :toast="showToast" />
       <MachinesView v-else-if="currentView === 'machines' && state" :machines="state.machines" :toast="showToast" :on-refresh="poll" />
+      <AssetsView v-else-if="currentView === 'assets'" :toast="showToast" />
       <UsersView v-else-if="currentView === 'users' && state" :machines="state.machines" :toast="showToast" />
       <AdminsView v-else-if="currentView === 'admins' && state" :me="state.me" :toast="showToast" />
       <AuditView v-else-if="currentView === 'audit' && state" :audit="state.audit" />

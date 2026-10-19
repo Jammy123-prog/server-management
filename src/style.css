@@ -331,3 +331,21 @@ button{font-family:var(--font)}
 
 /* machine grid scroll (machines > 8 / rows > 4) */
 .bento-scroll{max-height:76vh;overflow-y:auto;padding-right:8px}
+
+/* asset ledger table */
+.atable-wrap{overflow-x:auto;min-height:200px}
+.atable{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1080px}
+.atable th{
+  text-align:left;font-weight:500;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);padding:10px 12px;border-bottom:1px solid var(--line);
+  position:sticky;top:0;background:#0e1430;z-index:1;white-space:nowrap;
+}
+.atable td{padding:10px 12px;border-bottom:1px solid rgba(51,65,85,.35);vertical-align:middle}
+.atable tr:last-child td{border-bottom:0}
+.atable tbody tr{transition:background .3s var(--ease)}
+.atable tbody tr:hover{background:rgba(148,163,184,.04)}
+.atable .strong{color:var(--text);font-weight:500}
+.atable .mono{font-family:ui-monospace,'SF Mono','Cascadia Mono',monospace;font-size:11.5px}
+.atable .dim{color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.atable .chip{padding:2px 9px;font-size:10.5px}
+@media(max-width:768px){.atable-wrap{margin:0 -24px;padding:0 24px}}

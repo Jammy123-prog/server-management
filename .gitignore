@@ -3,4 +3,5 @@ dist/
 audit.json
 admins.json
 config.json
+assets.json
 *.log
