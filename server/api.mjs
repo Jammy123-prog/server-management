@@ -1020,12 +1020,13 @@ async function handleApi(req, res, url, body) {
     if (!items.length) return sendJson(res, { error: '导入内容为空' }, 400)
     if (items.length > 500) return sendJson(res, { error: '单次最多导入 500 条' }, 400)
     const now = Math.floor(Date.now() / 1000)
+    if (body.wipe) assets = []   // 覆盖导入：先清空
     for (const raw of items) {
       if (!raw || typeof raw !== 'object') continue
       assets.push({ id: 'a' + now.toString(36) + crypto.randomBytes(3).toString('hex'), ...sanitizeAsset(raw), created: now, updated: now })
     }
     const saved = saveAssets()
-    auditAdd('asset_import', `+${items.length} 条`, [], saved, saved ? '' : 'assets.json 写入失败（重启后丢失）')
+    auditAdd('asset_import', `+${items.length} 条${body.wipe ? '（覆盖导入）' : ''}`, [], saved, saved ? '' : 'assets.json 写入失败（重启后丢失）')
     return sendJson(res, { ok: saved, assets })
   }
 
