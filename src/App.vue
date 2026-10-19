@@ -88,8 +88,8 @@ onUnmounted(() => {
     <nav class="nav">
       <div class="brand">
         <svg width="17" height="17" viewBox="0 0 18 18" fill="none">
-          <rect x="1.5" y="1.5" width="15" height="15" rx="4.5" stroke="#8f86e8" stroke-width="1.1"/>
-          <path d="M5.5 6.5h7M5.5 9h4.5M5.5 11.5h6" stroke="rgba(244,244,246,.7)" stroke-width="1.1" stroke-linecap="round"/>
+          <rect x="1.5" y="1.5" width="15" height="15" rx="4.5" stroke="#22c55e" stroke-width="1.1"/>
+          <path d="M5.5 6.5h7M5.5 9h4.5M5.5 11.5h6" stroke="rgba(248,250,252,.75)" stroke-width="1.1" stroke-linecap="round"/>
         </svg>
         <span>GPU Ops Center</span>
       </div>

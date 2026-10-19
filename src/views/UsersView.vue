@@ -191,7 +191,7 @@ async function doPasswd() {
           <div class="mtitle">
             <span class="dot" :class="m.online ? 'on' : 'off'" style="width:7px;height:7px"></span>
             <span style="font-weight:600;font-size:15px">{{ m.host }}</span>
-            <span v-if="m.os === 'windows'" class="count" style="color:var(--warn);border-color:rgba(239,159,95,.4);background:rgba(239,159,95,.1)">Windows</span>
+            <span v-if="m.os === 'windows'" class="count" style="color:var(--warn);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.1)">Windows</span>
             <span class="count">{{ (usersMap[m.host]?.users || []).length }} 个账号</span>
           </div>
           <div v-if="usersMap[m.host]?.error" class="uerr">{{ usersMap[m.host].error }}</div>

@@ -164,7 +164,7 @@ async function doRemove() {
             <span class="dot" :class="m.online ? 'on' : 'off'" style="width:7px;height:7px"></span>
             <span style="font-weight:600;font-size:15px">{{ m.host }}</span>
             <span class="mono" style="font-size:12px;color:var(--faint)">{{ m.ip }}</span>
-            <span class="count" :style="m.os === 'windows' ? 'color:var(--warn);border-color:rgba(239,159,95,.4);background:rgba(239,159,95,.1)' : ''">{{ m.os === 'windows' ? 'Windows' : ((m.gpus || []).length + ' 卡') }}</span>
+            <span class="count" :style="m.os === 'windows' ? 'color:var(--warn);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.1)' : ''">{{ m.os === 'windows' ? 'Windows' : ((m.gpus || []).length + ' 卡') }}</span>
           </div>
           <div style="font-size:12px;color:var(--muted)">
             <template v-if="m.online">
